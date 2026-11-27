@@ -1,0 +1,2 @@
+# ASR benchmark status
+No actual model run, no WER/CER results. Added research/asr/score.py for strict paired transcript metrics, mixed WER and English token error rate (proxy, not direct script preservation metric). Run python3 -m unittest discover -s research/asr -p 'test_*.py' and python3 research/asr/score.py predictions.jsonl. Synthetic fixtures only. Next: licensed independent speaker-disjoint audio, model adapters, latency/RAM/RTF/power/thermal measurement and explicit script alignment analysis. Never publish private audio.

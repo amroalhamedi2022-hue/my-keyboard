@@ -1,0 +1,2 @@
+# Glide benchmark status
+Original geometric research baseline GeometricRanker: per-layout coordinate map, resampled paths, endpoint and length penalties. Unit fixtures Arabic/English; no real traces, no production dictionary, no IME integration, no speed/accuracy evidence. Limitations: O(vocabulary * samples), repeat-letter ambiguity, ligatures/diacritics not handled, no spatial probability/context ranking. Next: licensed lexicon, indexed candidate retrieval, real independent consenting traces, top-1/top-3 and latency across layouts, compare source-audited neural models.
