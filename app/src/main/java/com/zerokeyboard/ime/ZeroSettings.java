@@ -8,5 +8,7 @@ final class ZeroSettings {
  boolean trail(){return p.getBoolean("glide_trail",true);}
  boolean space(){return p.getBoolean("glide_space",true);}
  boolean incognito(){return p.getBoolean("incognito",false);}
+ boolean voice(){return p.getBoolean("voice_enabled",false);}
+ com.zerokeyboard.ime.voice.ModelCatalog model(){return p.getBoolean("voice_base",false)?com.zerokeyboard.ime.voice.ModelCatalog.BASE:com.zerokeyboard.ime.voice.ModelCatalog.TINY;}
  void set(String key,boolean value){p.edit().putBoolean(key,value).apply();}
 }

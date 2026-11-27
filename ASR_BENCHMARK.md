@@ -2,3 +2,5 @@
 No actual model run, no WER/CER results. Added research/asr/score.py for strict paired transcript metrics, mixed WER and English token error rate (proxy, not direct script preservation metric). Run python3 -m unittest discover -s research/asr -p 'test_*.py' and python3 research/asr/score.py predictions.jsonl. Synthetic fixtures only. Next: licensed independent speaker-disjoint audio, model adapters, latency/RAM/RTF/power/thermal measurement and explicit script alignment analysis. Never publish private audio.
 
 Batch 2: CPU whisper-cli runner for verified local model file, private consented WAV manifest, JSON transcription output, per-clip elapsed time and cold-process RTF; 4 synthetic adapter tests pass. No actual whisper executable/model/audio provided or executed. Run same held-out samples for auto/ar/en and tiny/base quantized; do not conflate single-clip language selection with intra-sentence code switching. See research/asr/README.md.
+
+Batch 3: native whisper.cpp CPU backend and two exact-hash multilingual candidates (Tiny Q5 32.2 MB, Base Q5 59.7 MB) integrated in source. No actual inference or accuracy/latency measurement. See docs/VOICE_INTEGRATION.md.
