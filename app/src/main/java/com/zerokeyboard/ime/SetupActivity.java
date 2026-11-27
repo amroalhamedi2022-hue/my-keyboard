@@ -28,12 +28,12 @@ public final class SetupActivity extends Activity {
   toggle(root,"Arabic glide",settings.glide(true),settings,"glide_ar");
   toggle(root,"Glide trail",settings.trail(),settings,"glide_trail");
   toggle(root,"Glide automatic space",settings.space(),settings,"glide_space");
-  toggle(root,"Incognito (disables glide)",settings.incognito(),settings,"incognito");
+  toggle(root,"Incognito (disables glide and voice)",settings.incognito(),settings,"incognito");
   models=new ModelStore(this);modelStatus=new TextView(this);root.addView(modelStatus);refreshModels();
   toggle(root,"Enable experimental offline voice",settings.voice(),settings,"voice_enabled");
   toggle(root,"Use Base rather than Tiny model",settings.model()==ModelCatalog.BASE,settings,"voice_base");
   Button mic=new Button(this);mic.setText("Grant microphone permission");mic.setOnClickListener(v->{if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},42);});root.addView(mic);
-  Button imp=new Button(this);imp.setText("Import official Tiny/Base Q5 model (.bin)");imp.setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/octet-stream");startActivityForResult(i,43);});root.addView(imp);
+  Button imp=new Button(this);imp.setText("Import official Tiny/Base Q5 model (.bin)");imp.setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");startActivityForResult(i,43);});root.addView(imp);
   for(ModelCatalog model:ModelCatalog.values()){Button del=new Button(this);del.setText("Remove "+model.name()+" model");del.setOnClickListener(v->{models.delete(model);refreshModels();});root.addView(del);}
   ScrollView scroll=new ScrollView(this);scroll.addView(root);setContentView(scroll);
  }

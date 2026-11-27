@@ -2,7 +2,7 @@
 | ID | Status | Evidence / missing |
 |---|---|---|
 | R01 | In Progress | IME manifest/service, setup, basic layouts/editor actions written; Android compile/device tests pending |
-| R02-R03 | Researching | Experimental native whisper.cpp JNI, verified model import/select/delete, mic permission, bounded in-memory capture, cancellation guard and editor insertion authored; Android build/inference and code-switch benchmarks pending |
+| R02-R03 | Researching | Experimental native whisper.cpp JNI, verified model import/select/delete, mic permission, bounded in-memory capture, cancellation guard and editor insertion authored; 7 catalog smoke assertions passed; Android build/inference and code-switch benchmarks pending |
 | R04 | In Progress | Experimental IME touch capture, trail, seed dictionary, top candidate composing and alternatives authored; prior geometric smoke passed, Android integration untested; production lexicon and real benchmarks missing |
 | R05 | In Progress | Basic layout logic passed JVM smoke; language toggle and diacritics/symbols written, no dictionaries |
 | R06-R08 | Pending | Glide per-language, trail, spacing and incognito preferences authored; comprehensive settings/adaptive layouts/utilities pending |

@@ -37,7 +37,7 @@ public final class ZeroImeService extends InputMethodService {
  }
  @Override public boolean onEvaluateFullscreenMode(){return false;}
  @Override public void onStartInput(EditorInfo info,boolean restarting){cancelVoice();clearComposition(false);super.onStartInput(info,restarting);active=true;policy=EditorPolicy.from(info);shift=false;symbols=false;render();}
- @Override public void onStartInputView(EditorInfo info,boolean restarting){super.onStartInputView(info,restarting);active=true;policy=EditorPolicy.from(info);render();}
+ @Override public void onStartInputView(EditorInfo info,boolean restarting){cancelVoice();super.onStartInputView(info,restarting);active=true;policy=EditorPolicy.from(info);render();}
  @Override public void onFinishInputView(boolean finishingInput){cancelVoice();clearComposition(true);active=false;if(root!=null)root.reset();super.onFinishInputView(finishingInput);}
  @Override public void onFinishInput(){cancelVoice();clearComposition(false);active=false;policy=EditorPolicy.from(null);shift=false;symbols=false;if(root!=null)root.reset();super.onFinishInput();}
  @Override public void onCurrentInputMethodSubtypeChanged(InputMethodSubtype subtype){
@@ -46,7 +46,7 @@ public final class ZeroImeService extends InputMethodService {
  @Override public void onConfigurationChanged(Configuration config){cancelVoice();clearComposition(true);super.onConfigurationChanged(config);render();}
  @Override public void onWindowHidden(){cancelVoice();super.onWindowHidden();}
  @Override public void onDestroy(){voice.close();super.onDestroy();}
- private void cancelVoice(){editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null)voiceKey.setText("Mic");}
+ private void cancelVoice(){editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText("Mic");voiceKey.setContentDescription("Offline voice typing");}}
  private boolean voiceAllowed(){return active&&isInputViewShown()&&settings!=null&&settings.voice()&&!settings.incognito()&&policy.allowPersonalization&&!policy.sensitive;}
  private boolean glideAllowed(){return active&&settings!=null&&settings.glide(lang==KeyboardLayout.Language.AR)&&!settings.incognito()&&policy.allowPersonalization&&!shift&&!symbols&&!policy.numeric;}
  private LinearLayout row(){LinearLayout line=new LinearLayout(this);line.setGravity(Gravity.CENTER);root.addView(line,new LinearLayout.LayoutParams(-1,-2));return line;}
@@ -81,7 +81,7 @@ public final class ZeroImeService extends InputMethodService {
   clearComposition(true);InputConnection target=getCurrentInputConnection();if(target==null)return;
   long generation=++editorGeneration;
   voice.start(models,settings.model(),new VoiceSession.Listener(){
-   public void state(String state){if(generation!=editorGeneration)return;voiceProcessing=state.startsWith("Processing");if(voiceKey!=null)voiceKey.setText(voiceProcessing?"Cancel":state.startsWith("Recording")?"Stop":state.startsWith("Preparing")?"Stop":"Mic");if(state.startsWith("Voice unavailable")||state.startsWith("No speech"))Toast.makeText(ZeroImeService.this,state,Toast.LENGTH_SHORT).show();}
+   public void state(String state){if(generation!=editorGeneration)return;voiceProcessing=state.startsWith("Processing");if(voiceKey!=null)voiceKey.setText(voiceProcessing?"Cancel":state.startsWith("Recording")?"REC • Stop":state.startsWith("Preparing")?"Stop":"Mic");if(voiceKey!=null)voiceKey.setContentDescription(state);if(state.startsWith("Voice unavailable")||state.startsWith("No speech"))Toast.makeText(ZeroImeService.this,state,Toast.LENGTH_SHORT).show();}
    public void result(String text){if(generation==editorGeneration&&voiceAllowed()&&target==getCurrentInputConnection())target.commitText(text,1);}
   });
  }

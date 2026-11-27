@@ -5,6 +5,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 /** Single bounded utterance. All state callbacks on main thread, samples only in RAM. */
 public final class VoiceSession {
  public interface Listener{void state(String state);void result(String text);}
@@ -12,13 +13,15 @@ public final class VoiceSession {
  private final Handler main=new Handler(Looper.getMainLooper());
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
  private static final class Job {volatile boolean stop,cancel;final Listener listener;Job(Listener l){listener=l;}}
+ private final AtomicBoolean running=new AtomicBoolean();
  private Job current;
  private boolean closed;
  public boolean busy(){return current!=null;}
  public void start(ModelStore store,ModelCatalog model,Listener listener){
   if(closed||current!=null)return;
+  if(!running.compareAndSet(false,true)){listener.state("Voice unavailable • previous session ending");return;}
   Job job=new Job(listener);current=job;listener.state("Preparing…");
-  worker.execute(()->record(job,store,model));
+  worker.execute(()->{try{record(job,store,model);}finally{running.set(false);}});
  }
  public void stop(){if(current!=null)current.stop=true;}
  public void cancel(){if(current!=null){current.cancel=true;current.stop=true;current=null;}}
@@ -28,6 +31,7 @@ public final class VoiceSession {
  private void record(Job job,ModelStore store,ModelCatalog model){
   float[] samples=null;short[] chunk=null;AudioRecord recorder=null;int count=0;
   try{
+   if(job.cancel||job.stop){done(job,null,"Ready");return;}
    File file=store.verified(model);if(job.cancel||job.stop){done(job,null,"Ready");return;}
    if(!NativeWhisper.available())throw new IllegalStateException("library missing");
    int min=AudioRecord.getMinBufferSize(RATE,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT);if(min<=0)throw new IllegalStateException("audio format unavailable");
