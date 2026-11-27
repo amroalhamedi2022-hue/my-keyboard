@@ -1,0 +1,17 @@
+package com.zerokeyboard.ime;
+import java.util.List;
+import java.util.Locale;
+/** Original provisional layouts, ordered by physical left-to-right key placement. */
+public final class KeyboardLayout {
+ private KeyboardLayout() {}
+ public enum Language { EN, AR }
+ public static List<String> rows(Language lang, boolean shift, boolean symbols, boolean numeric) {
+  if(numeric) return List.of("1 2 3","4 5 6","7 8 9","- 0 .");
+  if(symbols) return List.of("1 2 3 4 5 6 7 8 9 0","@ # $ % & * - + ( )","! ? : ; / \\ _ =");
+  if(lang==Language.AR) return shift ?
+    List.of("َ ً ُ ٌ ِ ٍ ْ ّ آ","أ إ ؤ ئ ء ة ى","ذ ، ؛ ؟ ٰ") :
+    List.of("ض ص ث ق ف غ ع ه خ ح ج","ش س ي ب ل ا ت ن م ك ط","ئ ء ؤ ر لا ى ة و ز ظ د ذ");
+  if(shift) return List.of("Q W E R T Y U I O P","A S D F G H J K L","Z X C V B N M");
+  return List.of("q w e r t y u i o p","a s d f g h j k l","z x c v b n m");
+ }
+}

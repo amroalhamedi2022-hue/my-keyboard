@@ -1,0 +1,2 @@
+# Test plan
+Initial unit: layouts, case, numeric override; add policy tests on Android, editor actions/selection/delete, composition, app switching and rotation. Then voice/glide independent data benchmarks, offline airplane mode, resource trust, sensitive context and network tests, autofill providers, real device and emulator matrix. No executed Android tests yet. CI workflow manually dispatched at milestones.
