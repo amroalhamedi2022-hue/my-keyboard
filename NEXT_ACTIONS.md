@@ -5,3 +5,5 @@
 4. Add safe session cancellation, settings, adaptive layout, autofill and resource trust. Do not release until evidence and signing strategy exist.
 
 Batch 2 priorities: compile and instrument GlideSurface tap vs drag cancellation, multi-touch, editor switch, selection callbacks, incognito/password handling. Replace seed lexicon after provenance and license approval; benchmark indexed candidate retrieval. Local ASR inference and microphone lifecycle remain highest-priority research.
+
+Voice runner ready for actual local model experiments, not yet executed with speech. Milestone CI explicitly triggered by marker path (or manual dispatch); inspect actual build result before claims. Fix verified Android compiler errors and add touch/editor lifecycle instrumentation before signed release.

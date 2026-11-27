@@ -1,0 +1,1 @@
+2026-11-27 milestone 01: first native IME and experimental glide integration; compile/lint/unit tests justified. Change this marker only for deliberate engineering builds.

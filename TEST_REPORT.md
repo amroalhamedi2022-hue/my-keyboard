@@ -11,3 +11,6 @@ These are synthetic unit/smoke tests only. No model inference, no real glide tra
 
 ## Batch 2
 Glide touch integration and settings authored; Android compile, dispatch and composing behavior not verified. Prior smoke results cover old pure components only. No new test pass asserted until execution evidence exists.
+
+## Batch 2 local ASR adapter tests
+Executed python -m unittest -v on test_run_whisper.py with 4 passing tests: bad stereo format, SHA-256, mono PCM duration, mixed-script JSON parsing. Synthetic test fixtures only. Local git hashes run_whisper.py 4d5d627586f0bbf4af0b9cdcfd8273c0c1dae607; test_run_whisper.py f70a66de2f852bd4decf1439b48e1d06ec4c65e5. Actual model inference, Android compile and integration still pending. Local environment javac available, Gradle/SDK not found; git remote DNS failed again. Milestone workflow trigger added, outcome not yet observed.
