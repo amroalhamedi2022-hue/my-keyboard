@@ -73,7 +73,7 @@ public final class ZeroImeService extends InputMethodService {
    key(controls,"⇧","Shift or diacritics",1f,()->{cancelVoice();clearComposition(true);shift=!shift;render();});
   }
   voiceKey=null;if(active&&settings.voice()&&!settings.incognito()&&policy.allowPersonalization&&!policy.sensitive)voiceKey=key(controls,"Mic","Offline voice typing",1.5f,this::toggleVoice);
-  key(controls,"⌫","Delete",1.3f,this::delete);Button space=key(controls,lang==KeyboardLayout.Language.AR?"مسافة":"Space","Space",3f,()->insert(" "));if(!policy.sensitive)space.setOnTouchListener(new SpaceCursor());key(controls,"↵","Editor action",1.3f,this::enter);
+  key(controls,"⌫","Delete",1.3f,this::delete);Button space=key(controls,lang==KeyboardLayout.Language.AR?"مسافة":"Space","Space",3f,()->insert(" "));if(!policy.sensitive&&settings.spaceCursor())space.setOnTouchListener(new SpaceCursor());key(controls,"↵","Editor action",1.3f,this::enter);
  }
  private void editorToolbar(){
   LinearLayout tools=row();
@@ -98,7 +98,7 @@ public final class ZeroImeService extends InputMethodService {
     case MotionEvent.ACTION_MOVE:
      float x=e.getX();if(Math.abs(x-origin)>dp(12))dragging=true;
      if(dragging){int steps=(int)((x-last)/dp(14));steps=Math.max(-8,Math.min(8,steps));for(int i=0;i<Math.abs(steps);i++)moveCursor(steps<0?KeyEvent.KEYCODE_DPAD_LEFT:KeyEvent.KEYCODE_DPAD_RIGHT);last+=steps*dp(14);}return true;
-    case MotionEvent.ACTION_UP:if(!dragging)v.performClick();return true;
+    case MotionEvent.ACTION_UP:if(!dragging&&e.getX()>=0&&e.getX()<v.getWidth()&&e.getY()>=0&&e.getY()<v.getHeight())v.performClick();return true;
     case MotionEvent.ACTION_CANCEL:case MotionEvent.ACTION_POINTER_DOWN:dragging=true;return true;
     default:return true;
    }
@@ -107,7 +107,7 @@ public final class ZeroImeService extends InputMethodService {
  private void reviewVoice(String text,long generation,InputConnection target){
   if(reviewRow==null)return;pendingVoice=text;reviewRow.removeAllViews();reviewRow.setVisibility(View.VISIBLE);
   TextView preview=new TextView(this);preview.setText(text);preview.setTextColor(Color.WHITE);preview.setMaxLines(2);preview.setEllipsize(android.text.TextUtils.TruncateAt.END);reviewRow.addView(preview,new LinearLayout.LayoutParams(0,-2,3f));
-  key(reviewRow,"Insert","Insert dictated text",1f,()->{String value=pendingVoice;cancelVoice();if(generation+1==editorGeneration&&voiceAllowed()&&target==getCurrentInputConnection()&&!value.isEmpty())target.commitText(value,1);});
+  key(reviewRow,"Insert","Insert dictated text",1f,()->{String value=pendingVoice;boolean valid=generation==editorGeneration&&voiceAllowed()&&target==getCurrentInputConnection();cancelVoice();if(valid&&!value.isEmpty())target.commitText(value,1);});
   key(reviewRow,"×","Discard dictated text",.7f,this::cancelVoice);
  }
  private void clearComposition(boolean finish){

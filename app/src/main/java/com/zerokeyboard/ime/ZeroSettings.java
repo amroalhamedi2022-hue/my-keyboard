@@ -13,6 +13,7 @@ final class ZeroSettings {
  boolean numberRow(){return p.getBoolean("number_row",false);}
  boolean indic(){return p.getBoolean("arabic_indic",false);}
  boolean editorTools(){return p.getBoolean("editor_tools",true);}
+ boolean spaceCursor(){return p.getBoolean("space_cursor",true);}
  boolean voiceReview(){return p.getBoolean("voice_review",true);}
  LayoutProfile.Mode layout(boolean tablet,boolean landscape){try{return LayoutProfile.Mode.valueOf(p.getString(profileKey(tablet,landscape)+"_mode","FULL"));}catch(IllegalArgumentException e){return LayoutProfile.Mode.FULL;}}
  int height(boolean tablet,boolean landscape){return p.getInt(profileKey(tablet,landscape)+"_height",100);}

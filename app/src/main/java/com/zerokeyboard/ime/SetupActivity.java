@@ -31,6 +31,7 @@ public final class SetupActivity extends Activity {
   toggle(root,"Incognito (disables glide and voice)",settings.incognito(),settings,"incognito");
   toggle(root,"Number row",settings.numberRow(),settings,"number_row");
   toggle(root,"Arabic-Indic numbers",settings.indic(),settings,"arabic_indic");
+  toggle(root,"Spacebar cursor gesture",settings.spaceCursor(),settings,"space_cursor");
   toggle(root,"Editor toolbar",settings.editorTools(),settings,"editor_tools");
   toggle(root,"Review dictated text before insertion",settings.voiceReview(),settings,"voice_review");
   for(boolean tablet:new boolean[]{false,true})for(boolean landscape:new boolean[]{false,true})profile(root,settings,tablet,landscape);
