@@ -17,7 +17,9 @@ public final class ZeroImeService extends InputMethodService {
  private KeyboardLayout.Language lang=KeyboardLayout.Language.EN;
  private boolean shift=false,symbols=false,active=false;
  private GlideSurface root;
- private LinearLayout strip;
+ private LinearLayout strip,reviewRow;
+ private LayoutProfile profile;
+ private String pendingVoice="";
  private EditorPolicy policy=EditorPolicy.from(null);
  private ZeroSettings settings;
  private final VoiceSession voice=new VoiceSession();
@@ -46,20 +48,23 @@ public final class ZeroImeService extends InputMethodService {
  @Override public void onConfigurationChanged(Configuration config){cancelVoice();clearComposition(true);super.onConfigurationChanged(config);render();}
  @Override public void onWindowHidden(){cancelVoice();super.onWindowHidden();}
  @Override public void onDestroy(){voice.close();super.onDestroy();}
- private void cancelVoice(){editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText("Mic");voiceKey.setContentDescription("Offline voice typing");}}
+ private void cancelVoice(){pendingVoice="";if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(View.GONE);}editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText("Mic");voiceKey.setContentDescription("Offline voice typing");}}
  private boolean voiceAllowed(){return active&&isInputViewShown()&&settings!=null&&settings.voice()&&!settings.incognito()&&policy.allowPersonalization&&!policy.sensitive;}
  private boolean glideAllowed(){return active&&settings!=null&&settings.glide(lang==KeyboardLayout.Language.AR)&&!settings.incognito()&&policy.allowPersonalization&&!shift&&!symbols&&!policy.numeric;}
- private LinearLayout row(){LinearLayout line=new LinearLayout(this);line.setGravity(Gravity.CENTER);root.addView(line,new LinearLayout.LayoutParams(-1,-2));return line;}
+ private LayoutProfile profile(){Configuration c=getResources().getConfiguration();boolean tablet=c.smallestScreenWidthDp>=600,landscape=c.orientation==Configuration.ORIENTATION_LANDSCAPE;return LayoutProfile.resolve(c.screenWidthDp,landscape,tablet,settings.layout(tablet,landscape),settings.height(tablet,landscape));}
+ private LinearLayout row(){LinearLayout line=new LinearLayout(this);line.setGravity(Gravity.CENTER);LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);if(profile!=null){if(profile.mode==LayoutProfile.Mode.LEFT)params.rightMargin=dp(profile.sideInset);if(profile.mode==LayoutProfile.Mode.RIGHT)params.leftMargin=dp(profile.sideInset);}root.addView(line,params);return line;}
  private Button key(LinearLayout row,String label,String desc,float weight,Runnable action){
   Button b=new Button(this);b.setAllCaps(false);b.setText(label);b.setContentDescription(desc);b.setTextColor(Color.WHITE);b.setTextSize(18);b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(0,0,0,0);
   GradientDrawable bg=new GradientDrawable();bg.setColor(Color.rgb(49,58,73));bg.setCornerRadius(dp(8));b.setBackground(bg);
-  int h=getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE?42:48;
+  int h=profile==null?48:profile.keyHeight;
   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(h),weight);lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);b.setOnClickListener(v->action.run());return b;
  }
  private void render(){
-  if(root==null)return;root.configure(glideAllowed(),settings.trail());root.removeAllViews();strip=row();strip.setVisibility(glideAllowed()?View.VISIBLE:View.GONE);strip.setMinimumHeight(dp(48));
+  if(root==null)return;profile=profile();root.configure(glideAllowed(),settings.trail());root.removeAllViews();strip=row();strip.setVisibility(glideAllowed()?View.VISIBLE:View.GONE);strip.setMinimumHeight(dp(profile.keyHeight));reviewRow=row();reviewRow.setVisibility(View.GONE);
+  if(settings.editorTools()&&active&&!policy.sensitive&&!settings.incognito())editorToolbar();
+  if(settings.numberRow()&&!policy.numeric&&!symbols){LinearLayout digits=row();for(String digit:LayoutProfile.digits(settings.indic()&&lang==KeyboardLayout.Language.AR).split(" "))key(digits,digit,digit,1f,()->insert(digit));}
   for(String letters:KeyboardLayout.rows(lang,shift,symbols,policy.numeric)){
-   LinearLayout line=row();for(String text:letters.split(" ")){Button b=key(line,text,text,1f,()->insert(text));root.register(b,text);}
+   LinearLayout line=row();String[] tokens=letters.split(" ");for(int i=0;i<tokens.length;i++){if(profile.gap>0&&!policy.numeric&&i==tokens.length/2){View gap=new View(this);line.addView(gap,new LinearLayout.LayoutParams(dp(profile.gap),1));}String text=policy.numeric?LayoutProfile.localizeDigits(tokens[i],settings.indic()&&lang==KeyboardLayout.Language.AR):tokens[i];Button b=key(line,text,text,1f,()->insert(text));root.register(b,text);}
   }
   LinearLayout controls=row();
   if(!policy.numeric){
@@ -68,7 +73,42 @@ public final class ZeroImeService extends InputMethodService {
    key(controls,"⇧","Shift or diacritics",1f,()->{cancelVoice();clearComposition(true);shift=!shift;render();});
   }
   voiceKey=null;if(active&&settings.voice()&&!settings.incognito()&&policy.allowPersonalization&&!policy.sensitive)voiceKey=key(controls,"Mic","Offline voice typing",1.5f,this::toggleVoice);
-  key(controls,"⌫","Delete",1.3f,this::delete);key(controls,lang==KeyboardLayout.Language.AR?"مسافة":"Space","Space",3f,()->insert(" "));key(controls,"↵","Editor action",1.3f,this::enter);
+  key(controls,"⌫","Delete",1.3f,this::delete);Button space=key(controls,lang==KeyboardLayout.Language.AR?"مسافة":"Space","Space",3f,()->insert(" "));if(!policy.sensitive)space.setOnTouchListener(new SpaceCursor());key(controls,"↵","Editor action",1.3f,this::enter);
+ }
+ private void editorToolbar(){
+  LinearLayout tools=row();
+  key(tools,"←","Cursor left",1f,()->moveCursor(KeyEvent.KEYCODE_DPAD_LEFT));
+  key(tools,"→","Cursor right",1f,()->moveCursor(KeyEvent.KEYCODE_DPAD_RIGHT));
+  key(tools,"All","Select all",1f,()->editorAction(android.R.id.selectAll));
+  key(tools,"Copy","Copy selected",1f,()->editorAction(android.R.id.copy));
+  key(tools,"Cut","Cut selected",1f,()->editorAction(android.R.id.cut));
+  key(tools,"Paste","Paste",1f,()->editorAction(android.R.id.paste));
+ }
+ private void editorAction(int action){
+  if(!active||policy.sensitive||settings.incognito())return;cancelVoice();clearComposition(true);InputConnection c=getCurrentInputConnection();if(c!=null)c.performContextMenuAction(action);
+ }
+ private void moveCursor(int code){
+  cancelVoice();clearComposition(true);InputConnection c=getCurrentInputConnection();if(c!=null){c.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,code));c.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP,code));}
+ }
+ private final class SpaceCursor implements View.OnTouchListener{
+  private float origin,last;private boolean dragging;
+  public boolean onTouch(View v,MotionEvent e){
+   switch(e.getActionMasked()){
+    case MotionEvent.ACTION_DOWN:origin=last=e.getX();dragging=false;return true;
+    case MotionEvent.ACTION_MOVE:
+     float x=e.getX();if(Math.abs(x-origin)>dp(12))dragging=true;
+     if(dragging){int steps=(int)((x-last)/dp(14));steps=Math.max(-8,Math.min(8,steps));for(int i=0;i<Math.abs(steps);i++)moveCursor(steps<0?KeyEvent.KEYCODE_DPAD_LEFT:KeyEvent.KEYCODE_DPAD_RIGHT);last+=steps*dp(14);}return true;
+    case MotionEvent.ACTION_UP:if(!dragging)v.performClick();return true;
+    case MotionEvent.ACTION_CANCEL:case MotionEvent.ACTION_POINTER_DOWN:dragging=true;return true;
+    default:return true;
+   }
+  }
+ }
+ private void reviewVoice(String text,long generation,InputConnection target){
+  if(reviewRow==null)return;pendingVoice=text;reviewRow.removeAllViews();reviewRow.setVisibility(View.VISIBLE);
+  TextView preview=new TextView(this);preview.setText(text);preview.setTextColor(Color.WHITE);preview.setMaxLines(2);preview.setEllipsize(android.text.TextUtils.TruncateAt.END);reviewRow.addView(preview,new LinearLayout.LayoutParams(0,-2,3f));
+  key(reviewRow,"Insert","Insert dictated text",1f,()->{String value=pendingVoice;cancelVoice();if(generation+1==editorGeneration&&voiceAllowed()&&target==getCurrentInputConnection()&&!value.isEmpty())target.commitText(value,1);});
+  key(reviewRow,"×","Discard dictated text",.7f,this::cancelVoice);
  }
  private void clearComposition(boolean finish){
   InputConnection old=composingConnection;composingConnection=null;composed="";confirmed=false;composingStart=-1;composingEnd=-1;if(strip!=null)strip.removeAllViews();
@@ -78,11 +118,11 @@ public final class ZeroImeService extends InputMethodService {
   if(!voiceAllowed())return;
   if(voice.busy()){if(voiceProcessing){cancelVoice();}else voice.stop();return;}
   if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED||!models.installed(settings.model())||!NativeWhisper.available()){Toast.makeText(this,"Open Zero Keyboard setup to grant microphone and import a verified model",Toast.LENGTH_LONG).show();return;}
-  clearComposition(true);InputConnection target=getCurrentInputConnection();if(target==null)return;
+  cancelVoice();clearComposition(true);InputConnection target=getCurrentInputConnection();if(target==null)return;
   long generation=++editorGeneration;
   voice.start(models,settings.model(),new VoiceSession.Listener(){
    public void state(String state){if(generation!=editorGeneration)return;voiceProcessing=state.startsWith("Processing");if(voiceKey!=null)voiceKey.setText(voiceProcessing?"Cancel":state.startsWith("Recording")?"REC • Stop":state.startsWith("Preparing")?"Stop":"Mic");if(voiceKey!=null)voiceKey.setContentDescription(state);if(state.startsWith("Voice unavailable")||state.startsWith("No speech"))Toast.makeText(ZeroImeService.this,state,Toast.LENGTH_SHORT).show();}
-   public void result(String text){if(generation==editorGeneration&&voiceAllowed()&&target==getCurrentInputConnection())target.commitText(text,1);}
+   public void result(String text){if(generation==editorGeneration&&voiceAllowed()&&target==getCurrentInputConnection()){if(settings.voiceReview())reviewVoice(text,generation,target);else target.commitText(text,1);}}
   });
  }
  private void glide(List<GeometricRanker.Point> trace,Map<Integer,GeometricRanker.Point> centers){
@@ -97,7 +137,7 @@ public final class ZeroImeService extends InputMethodService {
  }
  @Override public void onUpdateSelection(int oldSelStart,int oldSelEnd,int newSelStart,int newSelEnd,int candidatesStart,int candidatesEnd){
   super.onUpdateSelection(oldSelStart,oldSelEnd,newSelStart,newSelEnd,candidatesStart,candidatesEnd);
-  if(voice.busy()&&(oldSelStart!=newSelStart||oldSelEnd!=newSelEnd))cancelVoice();
+  if((voice.busy()||!pendingVoice.isEmpty())&&(oldSelStart!=newSelStart||oldSelEnd!=newSelEnd))cancelVoice();
   if(composingConnection==null)return;
   if(composingConnection!=getCurrentInputConnection()||!glideAllowed()){clearComposition(false);return;}
   if(candidatesStart>=0&&candidatesEnd-candidatesStart==composed.length()&&newSelStart==candidatesEnd&&newSelEnd==candidatesEnd&&(!confirmed||candidatesStart==composingStart)){

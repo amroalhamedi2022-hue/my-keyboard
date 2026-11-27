@@ -4,3 +4,5 @@ Baseline only: experimental glide only, no voice, suggestion strip, clipboard, i
 Batch 2: seed vocabulary has narrow coverage; ranking threshold uncalibrated; composition replacement depends on editor selection callbacks; no Android integration tests executed. No repeated-letter or neural recognition, live candidate preview, split or contextual rank yet.
 
 Batch 3 supersedes "no voice" with experimental bounded local voice source integration, not verified on device. No continuous dictation, streaming, true VAD, verified code-switch accuracy, download manager or model warm cache. Arm64/x86_64 only, no release. Native cancellation currently discards result but does not interrupt inference.
+
+Batch 04: native abort callback added, not compiled/tested; model loading still cannot be interrupted. Adaptive layouts and editor toolbar authored; no floating layout or device validation. Voice review optional, text held in memory until insert/discard/cancellation; simultaneous manual typing still cancels. Earlier limitations remain unless explicitly superseded.

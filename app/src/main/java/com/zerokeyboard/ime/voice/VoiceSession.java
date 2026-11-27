@@ -12,7 +12,7 @@ public final class VoiceSession {
  private static final int RATE=16000,MAX=RATE*30;
  private final Handler main=new Handler(Looper.getMainLooper());
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
- private static final class Job {volatile boolean stop,cancel;final Listener listener;Job(Listener l){listener=l;}}
+ private static final class Job {volatile boolean stop,cancel;final long id=NativeWhisper.newSession();final Listener listener;Job(Listener l){listener=l;}}
  private final AtomicBoolean running=new AtomicBoolean();
  private Job current;
  private boolean closed;
@@ -24,7 +24,7 @@ public final class VoiceSession {
   worker.execute(()->{try{record(job,store,model);}finally{running.set(false);}});
  }
  public void stop(){if(current!=null)current.stop=true;}
- public void cancel(){if(current!=null){current.cancel=true;current.stop=true;current=null;}}
+ public void cancel(){if(current!=null){current.cancel=true;current.stop=true;NativeWhisper.cancel(current.id);current=null;}}
  public void close(){closed=true;cancel();worker.shutdownNow();}
  private void state(Job job,String s){main.post(()->{if(current==job&&!job.cancel)job.listener.state(s);});}
  private void done(Job job,String text,String status){main.post(()->{if(current!=job||job.cancel)return;current=null;job.listener.state(status);if(text!=null&&!text.isEmpty())job.listener.result(text);});}
@@ -52,7 +52,7 @@ public final class VoiceSession {
    if(job.cancel)return;
    if(count<RATE/3||peak<0.003f){done(job,null,"No speech detected");return;}
    state(job,"Processing locally…");
-   String result=NativeWhisper.transcribe(file.getAbsolutePath(),samples,count);
+   String result=NativeWhisper.transcribe(file.getAbsolutePath(),samples,count,job.id);
    done(job,result,"Ready");
   }catch(Exception|LinkageError error){done(job,null,"Voice unavailable • check setup");}
   finally{if(recorder!=null){try{recorder.stop();}catch(RuntimeException ignored){}recorder.release();}if(samples!=null)Arrays.fill(samples,0);if(chunk!=null)Arrays.fill(chunk,(short)0);}

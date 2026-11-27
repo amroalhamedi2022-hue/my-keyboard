@@ -9,3 +9,5 @@ Batch 2 priorities: compile and instrument GlideSurface tap vs drag cancellation
 Voice runner ready for actual local model experiments, not yet executed with speech. Milestone CI explicitly triggered by marker path (or manual dispatch); inspect actual build result before claims. Fix verified Android compiler errors and add touch/editor lifecycle instrumentation before signed release.
 
 Batch 3: build native + Android, test actual recording, local inference and input insertion on Android 13; benchmark Tiny/Base with consented held-out mixed speech; implement abortable/warm native model sessions, VAD and live partials; audit full native dependency and licenses. Continue Glide dictionary/index and Autofill independently.
+
+Batch 04: test adaptive profiles and split glide on physical tablet, validate editor actions and selection callbacks, verify native abort and voice review on device. Continue licensed production lexicon, real bilingual ASR benchmark, warm context lifecycle, streaming, Autofill.
