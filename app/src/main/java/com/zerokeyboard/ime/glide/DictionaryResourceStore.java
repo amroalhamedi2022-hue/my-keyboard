@@ -10,7 +10,7 @@ public final class DictionaryResourceStore {
  private static long revision;
  private final Context context;private final File dir;
  private long seen=-1;
- private final Map<Boolean,List<String>> cache=new HashMap<>();
+ private final Map<Boolean,List<String>> cache=new HashMap<>(),bundled=new HashMap<>();
  public DictionaryResourceStore(Context c){context=c.getApplicationContext();dir=new File(context.getNoBackupFilesDir(),"dictionaries");}
  private AtomicFile file(boolean ar){return new AtomicFile(new File(dir,ar?"ar-frequency.txt":"en-frequency.txt"));}
  public int install(Uri uri,boolean ar)throws IOException{
@@ -26,14 +26,16 @@ public final class DictionaryResourceStore {
  }
  public void remove(boolean ar){synchronized(LOCK){file(ar).delete();revision++;}}
  /** Called on background worker, never UI thread. */
- public List<String> words(boolean ar){
+ public List<String> words(boolean ar,boolean allowImported){
   synchronized(LOCK){
    if(seen!=revision){cache.clear();seen=revision;}
+   List<String> base=bundled.get(ar);if(base==null){try(InputStream in=context.getAssets().open("dictionaries/"+(ar?"ar":"en")+"-frequency.txt")){base=FrequencyLexicon.parse(FrequencyLexicon.read(in),ar);}catch(IOException|RuntimeException e){base=Collections.emptyList();}bundled.put(ar,base);}
+   if(!allowImported)return base;
    List<String> existing=cache.get(ar);if(existing!=null)return existing;
    List<String> result;
    try(InputStream in=file(ar).openRead()){result=FrequencyLexicon.parse(FrequencyLexicon.read(in),ar);}
    catch(IOException|RuntimeException e){result=Collections.emptyList();}
-   cache.put(ar,result);return result;
+   if(result.isEmpty())result=base;cache.put(ar,result);return result;
   }
  }
 }

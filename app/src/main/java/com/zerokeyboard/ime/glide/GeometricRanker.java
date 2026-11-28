@@ -12,8 +12,8 @@ public final class GeometricRanker {
   Candidate(String w,double s){word=w;score=s;}
  }
  private static final class Template {
-  final String word; final List<Point> sampled; final Point first,last; final double length;
-  Template(String word,List<Point> raw){this.word=word;sampled=sample(raw);first=raw.get(0);last=raw.get(raw.size()-1);length=GeometricRanker.length(raw);}
+  final String word; final List<Point> sampled; final Point first,last; final double length,prior;
+  Template(String word,List<Point> raw,double prior){this.word=word;this.prior=prior;sampled=sample(raw);first=raw.get(0);last=raw.get(raw.size()-1);length=GeometricRanker.length(raw);}
  }
  private Map<Integer,Point> cachedKeys=Collections.emptyMap();
  private List<String> cachedWords=Collections.emptyList();
@@ -51,10 +51,10 @@ public final class GeometricRanker {
   List<String> wordList=new ArrayList<>(words);
   if(wordList.equals(cachedWords)&&sameKeys(keys,cachedKeys))return;
   Map<Integer,Point> keyCopy=new HashMap<>(keys);List<Template> templates=new ArrayList<>();
-  for(String word:wordList){
+  int index=0;for(String word:wordList){int position=index++;
    if(word.isEmpty())continue;List<Point> raw=new ArrayList<>();
    for(int i=0;i<word.length();){int cp=word.codePointAt(i);i+=Character.charCount(cp);Point point=key(keyCopy,cp);if(point==null){raw.clear();break;}raw.add(point);}
-   if(raw.size()>=2&&length(raw)>0)templates.add(new Template(word,raw));
+   if(raw.size()>=2&&length(raw)>0)templates.add(new Template(word,raw,0.12*Math.log1p(position)/Math.log1p(Math.max(1,wordList.size()))));
   }
   cachedKeys=keyCopy;cachedWords=wordList;cachedTemplates=templates;
  }
@@ -64,7 +64,7 @@ public final class GeometricRanker {
   Comparator<Candidate> order=Comparator.comparingDouble((Candidate c)->c.score).thenComparing(c->c.word);
   PriorityQueue<Candidate> best=new PriorityQueue<>(limit,order.reversed());double traceLength=length(trace);
   for(Template template:cachedTemplates){
-   double lower=0.4*(d(trace.get(0),template.first)+d(trace.get(trace.size()-1),template.last))+0.08*Math.abs(traceLength-template.length);
+   double lower=template.prior+0.4*(d(trace.get(0),template.first)+d(trace.get(trace.size()-1),template.last))+0.08*Math.abs(traceLength-template.length);
    if(best.size()==limit&&lower>best.peek().score)continue;
    double error=0;for(int i=0;i<SAMPLES;i++)error+=d(actual.get(i),template.sampled.get(i));
    Candidate candidate=new Candidate(template.word,error/SAMPLES+lower);

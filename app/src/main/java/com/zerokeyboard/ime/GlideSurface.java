@@ -32,7 +32,7 @@ final class GlideSurface extends LinearLayout {
  private void cacheBounds(){getLocationOnScreen(origin);bounds.clear();for(View v:letters.keySet()){v.getLocationOnScreen(location);float l=location[0]-origin[0],t=location[1]-origin[1];bounds.put(v,new RectF(l,t,l+v.getWidth(),t+v.getHeight()));}}
  private void geometry(){
   getLocationOnScreen(origin);
-  unit=first==null?1:Math.max(1,first.getWidth());
+  unit=Math.max(1,getWidth()/10f);
   centers.clear();
   for(Map.Entry<View,String> e:letters.entrySet()){View v=e.getKey();v.getLocationOnScreen(location);centers.put(e.getValue().codePointAt(0),new Point((location[0]-origin[0]+v.getWidth()/2f)/unit,(location[1]-origin[1]+v.getHeight()/2f)/unit));}
  }

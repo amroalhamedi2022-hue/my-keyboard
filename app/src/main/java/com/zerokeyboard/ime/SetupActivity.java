@@ -49,7 +49,7 @@ public final class SetupActivity extends Activity {
   dictionary(root,settings,false);dictionary(root,settings,true);
   dictionaries=new DictionaryResourceStore(this);
   toggle(root,"Use imported frequency dictionary",settings.importedDictionary(),settings,"imported_dictionary");
-  dictionaryStatus=new TextView(this);dictionaryStatus.setText("Local UTF-8 word/count dictionaries • up to 8,000 words per language");root.addView(dictionaryStatus);
+  dictionaryStatus=new TextView(this);dictionaryStatus.setText("Built-in offline dictionaries: 8,000 words each. Import a custom UTF-8 word/count list to replace it.");root.addView(dictionaryStatus);
   for(boolean ar:new boolean[]{false,true}){
    Button add=new Button(this);add.setText(ar?"Import Arabic frequency list":"Import English frequency list");add.setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");startActivityForResult(i,ar?45:44);});root.addView(add);
    Button remove=new Button(this);remove.setText(ar?"Remove Arabic frequency list":"Remove English frequency list");remove.setOnClickListener(v->imports.execute(()->{dictionaries.remove(ar);runOnUiThread(()->{if(!isDestroyed())dictionaryStatus.setText("Dictionary removed");});}));root.addView(remove);
@@ -84,6 +84,7 @@ public final class SetupActivity extends Activity {
   toggle(root,"Review dictated text before insertion",settings.voiceReview(),settings,"voice_review");
 
   Button mic=new Button(this);mic.setText(R.string.grant_microphone);mic.setOnClickListener(v->{if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},42);});root.addView(mic);
+  Button getModel=new Button(this);getModel.setText("Get selected voice model (external browser)");getModel.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"+settings.model().filename)));}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"No browser installed",Toast.LENGTH_SHORT).show();}});root.addView(getModel);
   Button imp=new Button(this);imp.setText(R.string.import_model);imp.setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");startActivityForResult(i,43);});root.addView(imp);
   for(ModelCatalog model:ModelCatalog.values()){Button del=new Button(this);del.setText(getString(R.string.remove_model,model.name()));del.setOnClickListener(v->{models.delete(model);refreshModels();});root.addView(del);}
   root=section("Layout & size","Phone · tablet · portrait · landscape");for(boolean tablet:new boolean[]{false,true})for(boolean landscape:new boolean[]{false,true})profile(root,settings,tablet,landscape);

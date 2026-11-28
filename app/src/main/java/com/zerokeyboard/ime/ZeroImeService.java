@@ -80,7 +80,7 @@ public final class ZeroImeService extends InlineImeService {
  private void expireClipboard(){if(settings!=null){clipboard.prune(SystemClock.elapsedRealtime(),settings.clipboardTtl());if(panel==1&&isInputViewShown())render();else scheduleClipboardExpiry();}}
  private void scheduleClipboardExpiry(){clipboardTimer.removeCallbacks(clipboardExpiry);if(!toolsAllowed()||!settings.clipboard())return;long delay=clipboard.nextExpiry(SystemClock.elapsedRealtime(),settings.clipboardTtl());if(delay>=0)clipboardTimer.postDelayed(clipboardExpiry,delay);}
  private void cancelGlide(){glideGeneration++;glideWorker.getQueue().clear();boolean pending=glidePending;glidePending=false;if(pending)restoreBar();}
- private void cancelVoice(){cancelGlide();pendingVoice="";partialVoice="";liveVoicePreview=null;if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(View.GONE);}editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText("🎙");voiceKey.setContentDescription(getString(R.string.offline_voice));}}
+ private void cancelVoice(){cancelGlide();pendingVoice="";partialVoice="";liveVoicePreview=null;if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(View.GONE);}editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText("🎙");voiceKey.setContentDescription(getString(R.string.offline_voice));}if(strip!=null&&strip.getChildCount()==0)restoreBar();}
  private boolean voiceAllowed(){return active&&isInputViewShown()&&settings!=null&&settings.voice()&&!settings.incognito()&&policy.allowPersonalization&&!policy.sensitive;}
  private boolean glideAllowed(){return panel==0&&active&&settings!=null&&settings.glide(lang==KeyboardLayout.Language.AR)&&!settings.incognito()&&policy.allowPersonalization&&!shift&&!symbols&&!policy.numeric;}
  private LayoutProfile profile(){Configuration c=getResources().getConfiguration();boolean tablet=c.smallestScreenWidthDp>=600,landscape=c.orientation==Configuration.ORIENTATION_LANDSCAPE;return LayoutProfile.resolve(c.screenWidthDp,landscape,tablet,settings.layout(tablet,landscape),settings.height(tablet,landscape));}
@@ -250,7 +250,7 @@ public final class ZeroImeService extends InlineImeService {
   TextView status=new TextView(this);status.setText("Recognizing…");status.setTextColor(style.text);if(strip!=null){strip.removeAllViews();strip.setVisibility(View.VISIBLE);strip.addView(status,new LinearLayout.LayoutParams(-1,dp(barHeight)));}
   glideWorker.execute(()->{if(token!=glideGeneration)return;
    List<GeometricRanker.Candidate> candidates;
-   try{List<String> words=FrequencyLexicon.merge(SeedLexicon.words(ar),personal,imported?resources.words(ar):Collections.emptyList());candidates=ranker.rank(trace,centers,words,3);}
+   try{List<String> words=FrequencyLexicon.merge(SeedLexicon.words(ar),personal,resources.words(ar,imported));candidates=ranker.rank(trace,centers,words,3);}
    catch(RuntimeException e){candidates=Collections.emptyList();}
    List<GeometricRanker.Candidate> result=candidates;
    glideMain.post(()->applyGlide(token,c,result));
@@ -261,7 +261,7 @@ public final class ZeroImeService extends InlineImeService {
   if(!glideAllowed()||!isInputViewShown()||c!=getCurrentInputConnection()||candidates.isEmpty()||candidates.get(0).score>2.0){restoreBar();return;}
   String word=candidates.get(0).word+(settings.space()?" ":"");
   composingConnection=c;composed=word;confirmed=false;
-  if(!c.setComposingText(word,1)){clearComposition(false);return;}
+  if(!c.setComposingText(word,1)){clearComposition(false);restoreBar();return;}
   buildingBar=true;try{for(GeometricRanker.Candidate option:candidates)key(strip,option.word,"Glide candidate "+option.word,1f,()->choose(option.word));}finally{buildingBar=false;}
  }
  @Override public void onUpdateSelection(int oldSelStart,int oldSelEnd,int newSelStart,int newSelEnd,int candidatesStart,int candidatesEnd){

@@ -21,7 +21,7 @@ public final class KeyboardLayout {
    case "ل":return new String[]{"لا","لأ","لإ","لآ"};case "د":return new String[]{"ذ"};
    case "،":case ",":return new String[]{",","،","؛",";",":","!","؟","?"};
    case ".":return new String[]{".","…","!","?","؟","-","_"};
-   case "a":return new String[]{"@","à","á","â","ä"};case "e":return new String[]{"é","è","ê","ë"};
+   case "q":case "Q":return new String[]{"1"};case "w":case "W":return new String[]{"2"};case "e":case "E":return new String[]{"3"};case "r":case "R":return new String[]{"4"};case "t":case "T":return new String[]{"5"};case "y":case "Y":return new String[]{"6"};case "u":case "U":return new String[]{"7"};case "i":case "I":return new String[]{"8"};case "o":case "O":return new String[]{"9"};case "p":case "P":return new String[]{"0"};case "a":case "A":return new String[]{"@"};
    default:return new String[0];
   }
  }
