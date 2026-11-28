@@ -23,3 +23,5 @@ Batch 07: compile and instrument dictionary import/delete and invalid resource r
 Batch 07 continuous follow-up: compile JNI with pinned no-state APIs, instrument single and continuous recording, test microphone pause/resume and backlog with real model on Pad 5/Android13. Compare actual RTF and accuracy with real licensed mixed-speech data; refine boundary handling and avoid unverified claims.
 
 Batch 07 tools follow-up: compile and test new UI search, emoji insertion/tone, clipboard expiry outside panel, theme switches, ripple and feedback. Continue comprehensive settings search/grouping and licensed full emoji data. No automatic new full build triggered.
+
+Owner alpha priority: run corrected CI once; inspect failure if any; acquire unsigned release artifact and apksig kit, sign locally with owner Library key, verify certificate/package/version, deliver signed owner alpha only. Keep same certificate and application ID for updates. See docs/RELEASE_ALPHA01.md.

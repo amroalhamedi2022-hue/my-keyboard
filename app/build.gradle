@@ -10,8 +10,8 @@ android {
         targetSdk 35
         ndk { abiFilters 'arm64-v8a', 'x86_64' }
         externalNativeBuild { cmake { arguments '-DANDROID_STL=c++_shared' } }
-        versionCode 1
-        versionName '0.1.0-dev'
+        versionCode 100
+        versionName '0.1.0-alpha01'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

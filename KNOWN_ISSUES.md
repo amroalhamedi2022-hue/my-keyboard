@@ -14,3 +14,5 @@ Batch 07: imported frequency resources optional, max 8k/language; no bundled pro
 Batch 07 follow-up supersedes absence of continuous mode at source level: segmented previews only, not verified on device; 12s segment cap/5min wall limit, overflow stops capture, no token-level streaming. No neural VAD or actual code-switch benchmark. JNI no-state API path not compiled yet.
 
 Batch 07 tools: 96 original emoji metadata entries, limited skin tones, not complete CLDR coverage; preliminary palette/ripple only, no final visual approval or screenshot. Credential patterns are conservative and incomplete. Android expiry timer and all new UI/device behavior unverified.
+
+Owner alpha: actual CI failed at legacy SDK tools setup; correction pending rerun. New release key differs from previous debug signer. No signed alpha APK yet; Android integration and voice/glide benchmarks pending.

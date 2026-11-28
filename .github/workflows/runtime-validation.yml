@@ -18,14 +18,30 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - name: Use hosted Android SDK (no obsolete tools package)
+        shell: bash
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          test -d "$SDK"
+          MANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$MANAGER" ]; then
+            MANAGER="$(find "$SDK/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          fi
+          test -x "$MANAGER"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          dirname "$MANAGER" >> "$GITHUB_PATH"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          "$MANAGER" --sdk_root="$SDK" --licenses < <(yes) >/dev/null
+          "$MANAGER" --sdk_root="$SDK" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Install pinned build prerequisites
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
       - name: Verify probe helpers
         run: python3 -m unittest discover -s research/android -p 'test_*.py' -v
       - name: Theme, emoji and clipboard privacy smoke
@@ -50,7 +66,7 @@ jobs:
           mkdir -p runtime-results
           javac -encoding UTF-8 -h runtime-results -d /tmp/zero-jni app/src/main/java/com/zerokeyboard/ime/voice/VoiceOptions.java app/src/main/java/com/zerokeyboard/ime/voice/NativeWhisper.java
       - name: Build once for runtime milestone
-        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease --no-daemon
       - name: Inspect debug APK
         run: |
           mkdir -p runtime-results
@@ -60,6 +76,33 @@ jobs:
           if grep -q 'android.permission.INTERNET' runtime-results/permissions.txt; then
             echo 'Unexpected INTERNET permission'; exit 1
           fi
+      - name: Prepare unsigned release and offline signing kit
+        run: |
+          mkdir -p release-output/classes
+          APK=app/build/outputs/apk/release/app-release-unsigned.apk
+          test -f "$APK"
+          TOOL="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOL/zipalign" -P 16 -f 4 "$APK" release-output/Zero-Keyboard-0.1.0-alpha01-unsigned.apk
+          "$TOOL/zipalign" -c -P 16 4 release-output/Zero-Keyboard-0.1.0-alpha01-unsigned.apk
+          "$TOOL/aapt" dump badging release-output/Zero-Keyboard-0.1.0-alpha01-unsigned.apk > release-output/badging.txt
+          "$TOOL/aapt" dump permissions release-output/Zero-Keyboard-0.1.0-alpha01-unsigned.apk > release-output/permissions.txt
+          if grep -q 'android.permission.INTERNET' release-output/permissions.txt; then exit 1; fi
+          grep -q "package: name='com.zerokeyboard.ime' versionCode='100'" release-output/badging.txt
+          JAR="$(find "$HOME/.gradle/caches/modules-2/files-2.1/com.android.tools.build/apksig/8.7.3" -name 'apksig-8.7.3.jar' -print -quit)"
+          test -f "$JAR"
+          cp "$JAR" release-output/apksig-8.7.3.jar
+          javac -encoding UTF-8 -cp "$JAR" -d release-output/classes research/release/SignRelease.java
+          cp release/identity.properties release-output/
+          cp /usr/share/common-licenses/Apache-2.0 release-output/apksig-LICENSE.txt
+          git rev-parse HEAD > release-output/source-commit.txt
+          sha256sum release-output/*.apk release-output/*.jar > release-output/checksums.sha256
+      - name: Preserve unsigned alpha and offline signing kit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zero-alpha01-unsigned-owner-signing-kit
+          if-no-files-found: warn
+          path: release-output/
       - name: Enable hardware acceleration
         run: |
           test -e /dev/kvm

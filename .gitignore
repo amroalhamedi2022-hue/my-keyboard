@@ -14,3 +14,8 @@ research/private/
 *.wav
 *.flac
 *.onnx
+
+/owner-signing/
+/signing-password.txt
+**/signing-password.txt
+**/*OWNER-SECRETS*
