@@ -10,8 +10,19 @@ public final class KeyboardLayout {
   if(symbols) return Arrays.asList("1 2 3 4 5 6 7 8 9 0","@ # $ % & * - + ( )","! ? : ; / \\ _ =");
   if(lang==Language.AR) return shift ?
     Arrays.asList("َ ً ُ ٌ ِ ٍ ْ ّ آ","أ إ ؤ ئ ء ة ى","ذ ، ؛ ؟ ٰ") :
-    Arrays.asList("ض ص ث ق ف غ ع ه خ ح ج","ش س ي ب ل ا ت ن م ك ط","ئ ء ؤ ر لا ى ة و ز ظ د ذ","، . ؟");
-  if(shift) return Arrays.asList("Q W E R T Y U I O P","A S D F G H J K L","Z X C V B N M , .");
-  return Arrays.asList("q w e r t y u i o p","a s d f g h j k l","z x c v b n m , .");
+    Arrays.asList("ض ص ث ق ف غ ع ه خ ح ج","ش س ي ب ل ا ت ن م ك ط","ئ ء ؤ ر لا ى ة و ز ظ د ذ");
+  if(shift) return Arrays.asList("Q W E R T Y U I O P","A S D F G H J K L","Z X C V B N M");
+  return Arrays.asList("q w e r t y u i o p","a s d f g h j k l","z x c v b n m");
+ }
+ public static String[] alternatives(String key){
+  switch(key){
+   case "ا":return new String[]{"أ","إ","آ","ٱ"};
+   case "و":return new String[]{"ؤ"};case "ي":return new String[]{"ى","ئ"};case "ه":return new String[]{"ة"};
+   case "ل":return new String[]{"لا","لأ","لإ","لآ"};case "د":return new String[]{"ذ"};
+   case "،":case ",":return new String[]{",","،","؛",";",":","!","؟","?"};
+   case ".":return new String[]{".","…","!","?","؟","-","_"};
+   case "a":return new String[]{"@","à","á","â","ä"};case "e":return new String[]{"é","è","ê","ë"};
+   default:return new String[0];
+  }
  }
 }

@@ -22,7 +22,9 @@ import com.zerokeyboard.ime.voice.*;
 
 public final class ZeroImeService extends InlineImeService {
  private KeyboardLayout.Language lang=KeyboardLayout.Language.EN;
- private boolean shift=false,capsLock=false,symbols=false,active=false;
+ private boolean shift=false,capsLock=false,symbols=false,active=false,toolsExpanded=false;
+ private int mainHeight=48,barHeight=36;
+ private android.widget.PopupWindow alternatePopup;
  private final android.os.Handler deleteTimer=new android.os.Handler(android.os.Looper.getMainLooper());
  private final Runnable deleteRepeat=this::repeatDelete;
  private Button heldDelete;
@@ -46,6 +48,7 @@ public final class ZeroImeService extends InlineImeService {
  private final VoiceSession voice=new VoiceSession();
  private ModelStore models;
  private Button voiceKey;
+ private boolean buildingBar;
  private long editorGeneration;
  private boolean voiceProcessing;
  private final GeometricRanker ranker=new GeometricRanker();
@@ -61,7 +64,7 @@ public final class ZeroImeService extends InlineImeService {
  private int dp(float value){return Math.round(value*getResources().getDisplayMetrics().density);}
  @Override public View onCreateInputView(){
   settings=new ZeroSettings(this);models=new ModelStore(this);dictionaries=new DictionaryResourceStore(this);root=new GlideSurface(this,this::glide);root.setOrientation(LinearLayout.VERTICAL);root.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
-  root.setPadding(dp(3),dp(4),dp(3),dp(5));root.setBackgroundColor(Color.rgb(24,29,38));render();return wrapWithInlineStrip(root);
+  root.setPadding(dp(5),dp(2),dp(5),dp(4));root.setBackgroundColor(Color.rgb(24,29,38));render();return wrapWithInlineStrip(root);
  }
  @Override public boolean onEvaluateFullscreenMode(){return false;}
  @Override public void onStartInput(EditorInfo info,boolean restarting){invalidateInlineSession();cancelVoice();clearComposition(false);super.onStartInput(info,restarting);active=true;policy=EditorPolicy.from(info);resetPanels();shift=false;capsLock=false;symbols=false;render();}
@@ -76,53 +79,72 @@ public final class ZeroImeService extends InlineImeService {
  @Override public void onDestroy(){stopDeleteRepeat();cancelGlide();glideWorker.shutdownNow();clearTransientPanels();recentEmoji.clear();voice.close();super.onDestroy();}
  private void expireClipboard(){if(settings!=null){clipboard.prune(SystemClock.elapsedRealtime(),settings.clipboardTtl());if(panel==1&&isInputViewShown())render();else scheduleClipboardExpiry();}}
  private void scheduleClipboardExpiry(){clipboardTimer.removeCallbacks(clipboardExpiry);if(!toolsAllowed()||!settings.clipboard())return;long delay=clipboard.nextExpiry(SystemClock.elapsedRealtime(),settings.clipboardTtl());if(delay>=0)clipboardTimer.postDelayed(clipboardExpiry,delay);}
- private void cancelGlide(){glideGeneration++;glideWorker.getQueue().clear();if(glidePending&&strip!=null)strip.removeAllViews();glidePending=false;}
- private void cancelVoice(){cancelGlide();pendingVoice="";partialVoice="";liveVoicePreview=null;if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(View.GONE);}editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText(R.string.mic_label);voiceKey.setContentDescription(getString(R.string.offline_voice));}}
+ private void cancelGlide(){glideGeneration++;glideWorker.getQueue().clear();boolean pending=glidePending;glidePending=false;if(pending)restoreBar();}
+ private void cancelVoice(){cancelGlide();pendingVoice="";partialVoice="";liveVoicePreview=null;if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(View.GONE);}editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText("🎙");voiceKey.setContentDescription(getString(R.string.offline_voice));}}
  private boolean voiceAllowed(){return active&&isInputViewShown()&&settings!=null&&settings.voice()&&!settings.incognito()&&policy.allowPersonalization&&!policy.sensitive;}
  private boolean glideAllowed(){return panel==0&&active&&settings!=null&&settings.glide(lang==KeyboardLayout.Language.AR)&&!settings.incognito()&&policy.allowPersonalization&&!shift&&!symbols&&!policy.numeric;}
  private LayoutProfile profile(){Configuration c=getResources().getConfiguration();boolean tablet=c.smallestScreenWidthDp>=600,landscape=c.orientation==Configuration.ORIENTATION_LANDSCAPE;return LayoutProfile.resolve(c.screenWidthDp,landscape,tablet,settings.layout(tablet,landscape),settings.height(tablet,landscape));}
  private LinearLayout row(){LinearLayout line=new LinearLayout(this);line.setGravity(Gravity.CENTER);LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);if(profile!=null){if(profile.mode==LayoutProfile.Mode.LEFT)params.rightMargin=dp(profile.sideInset);if(profile.mode==LayoutProfile.Mode.RIGHT)params.leftMargin=dp(profile.sideInset);}root.addView(line,params);return line;}
  private Button key(LinearLayout row,String label,String desc,float weight,Runnable action){
-  Button b=new Button(this);b.setAllCaps(false);b.setText(label);b.setContentDescription(desc);b.setTextColor(style.text);b.setTextSize(style.fontSize);b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(0,0,0,0);
-  GradientDrawable bg=new GradientDrawable();bg.setColor(style.key);bg.setCornerRadius(dp(style.radius));b.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(style.press),bg,null));b.setSoundEffectsEnabled(settings.keySound());b.setHapticFeedbackEnabled(settings.keyHaptic());
-  int h=profile==null?48:profile.keyHeight;
-  LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(h),weight);lp.setMargins(dp(style.spacing),dp(style.spacing),dp(style.spacing),dp(style.spacing));row.addView(b,lp);b.setOnClickListener(v->{if(settings.keyHaptic())v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);action.run();});return b;
+  Button b=new Button(this);b.setAllCaps(false);b.setText(label);b.setContentDescription(desc);b.setTextColor(style.text);b.setTextSize(style.fontSize);b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(0,0,0,0);b.setGravity(Gravity.CENTER);b.setIncludeFontPadding(false);b.setStateListAnimator(null);b.setSingleLine(true);b.setEllipsize(android.text.TextUtils.TruncateAt.END);if(buildingBar)b.setTextSize(16);
+  GradientDrawable bg=new GradientDrawable();bg.setColor(buildingBar?style.modifier:style.key);bg.setCornerRadius(dp(style.radius));if(!buildingBar)bg.setStroke(dp(1),style.stroke);b.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(style.press),bg,null));b.setSoundEffectsEnabled(settings.keySound());b.setHapticFeedbackEnabled(settings.keyHaptic());
+  int h=buildingBar?barHeight:mainHeight;
+  LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(h),weight);int gap=buildingBar?2:Math.min(3,style.spacing);lp.setMargins(dp(gap),dp(gap),dp(gap),dp(gap));row.addView(b,lp);b.setOnClickListener(v->{if(settings.keyHaptic())v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);action.run();});return b;
  }
  @android.annotation.SuppressLint("ClickableViewAccessibility") private void render(){
-  if(root==null)return;stopDeleteRepeat();cancelGlide();clipboardTimer.removeCallbacks(clipboardExpiry);profile=profile();style=settings.theme((getResources().getConfiguration().uiMode&Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES);root.setBackgroundColor(style.background);root.trailStyle(style.accent,style.trailWidth);if(!toolsAllowed()){panel=0;clipboard.clear();}if(!settings.clipboard()){clipboard.clear();if(panel==1)panel=0;}if(!settings.emoji()&&panel==2)panel=0;scheduleClipboardExpiry();root.configure(glideAllowed(),settings.trail());root.removeAllViews();strip=row();strip.setVisibility(glideAllowed()?View.VISIBLE:View.GONE);strip.setMinimumHeight(dp(profile.keyHeight));reviewRow=row();reviewRow.setVisibility(View.GONE);
-  if(panel!=0){renderPanel();return;}
-  if(settings.editorTools()&&toolsAllowed())editorToolbar();
-  if(settings.numberRow()&&!policy.numeric&&!symbols){LinearLayout digits=row();for(String digit:LayoutProfile.digits(settings.indic()&&lang==KeyboardLayout.Language.AR).split(" "))key(digits,digit,digit,1f,()->insert(digit));}
-  for(String letters:KeyboardLayout.rows(lang,shift,symbols,policy.numeric)){
-   LinearLayout line=row();String[] tokens=letters.split(" ");for(int i=0;i<tokens.length;i++){if(profile.gap>0&&!policy.numeric&&i==tokens.length/2){View gap=new View(this);line.addView(gap,new LinearLayout.LayoutParams(dp(profile.gap),1));}String text=policy.numeric?LayoutProfile.localizeDigits(tokens[i],settings.indic()&&lang==KeyboardLayout.Language.AR):tokens[i];Button b=key(line,text,text,1f,()->insert(text));root.register(b,text);}
+  if(root==null)return;stopDeleteRepeat();cancelGlide();clipboardTimer.removeCallbacks(clipboardExpiry);profile=profile();style=settings.theme((getResources().getConfiguration().uiMode&Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES);root.setBackgroundColor(style.background);root.trailStyle(style.accent,style.trailWidth);if(!toolsAllowed()){panel=0;clipboard.clear();}if(!settings.clipboard()){clipboard.clear();if(panel==1)panel=0;}if(!settings.emoji()&&panel==2)panel=0;scheduleClipboardExpiry();root.configure(glideAllowed(),settings.trail());root.removeAllViews();Configuration cfg=getResources().getConfiguration();barHeight=CompactMetrics.toolbar(profile.keyHeight);mainHeight=CompactMetrics.keyHeight(cfg.screenHeightDp,profile.keyHeight,cfg.orientation==Configuration.ORIENTATION_LANDSCAPE,4,barHeight,settings.numberRow()?barHeight:0);strip=row();reviewRow=row();reviewRow.setVisibility(View.GONE);restoreBar();
+  if(panel!=0){strip.setVisibility(View.GONE);renderPanel();return;}
+  if(settings.numberRow()&&!policy.numeric&&!symbols){LinearLayout digits=row();buildingBar=true;for(String digit:LayoutProfile.digits(settings.indic()&&lang==KeyboardLayout.Language.AR).split(" "))key(digits,digit,digit,1f,()->insert(digit));buildingBar=false;}
+  int rowIndex=0;for(String letters:KeyboardLayout.rows(lang,shift,symbols,policy.numeric)){
+   LinearLayout line=row();String[] tokens=letters.split(" ");boolean latin=lang==KeyboardLayout.Language.EN&&!symbols&&!policy.numeric;
+   if(latin&&rowIndex==1)addWeightSpace(line,.5f);
+   if(latin&&rowIndex==2)modifier(line,shiftButton(line));for(int i=0;i<tokens.length;i++){if(profile.gap>0&&!policy.numeric&&i==tokens.length/2){View gap=new View(this);line.addView(gap,new LinearLayout.LayoutParams(dp(profile.gap),1));}String text=policy.numeric?LayoutProfile.localizeDigits(tokens[i],settings.indic()&&lang==KeyboardLayout.Language.AR):tokens[i];Button b=key(line,text,text,1f,()->insert(text));root.register(b,text);if(!policy.numeric&&!symbols&&KeyboardLayout.alternatives(text).length>0)b.setOnLongClickListener(v->showAlternatives(b,text));}
+   if(latin&&rowIndex==1)addWeightSpace(line,.5f);if(latin&&rowIndex==2)modifier(line,deleteButton(line));rowIndex++;
   }
   LinearLayout controls=row();
   if(!policy.numeric){
-   key(controls,lang==KeyboardLayout.Language.AR?"EN":"ع","Switch language",1.3f,()->{cancelVoice();clearComposition(true);lang=lang==KeyboardLayout.Language.EN?KeyboardLayout.Language.AR:KeyboardLayout.Language.EN;shift=false;capsLock=false;symbols=false;render();});
-   key(controls,symbols?"ABC":"123","Symbols",1.3f,()->{cancelVoice();clearComposition(true);symbols=!symbols;shift=false;capsLock=false;render();});
-   Button shiftKey=key(controls,capsLock?"⇪":"⇧",capsLock?"Caps lock":"Shift or diacritics",1f,()->{cancelVoice();clearComposition(true);if(capsLock){capsLock=false;shift=false;}else shift=!shift;render();});
-   if(lang==KeyboardLayout.Language.EN&&!symbols)shiftKey.setOnLongClickListener(v->{cancelVoice();clearComposition(true);capsLock=!capsLock;shift=capsLock;render();return true;});
+   modifier(controls,key(controls,lang==KeyboardLayout.Language.AR?"EN":"ع","Switch language",1.1f,()->{cancelVoice();clearComposition(true);lang=lang==KeyboardLayout.Language.EN?KeyboardLayout.Language.AR:KeyboardLayout.Language.EN;shift=false;capsLock=false;symbols=false;render();}));
+   modifier(controls,key(controls,symbols?"ABC":"123","Symbols",1.3f,()->{cancelVoice();clearComposition(true);symbols=!symbols;shift=false;capsLock=false;render();}));
+   if(lang==KeyboardLayout.Language.AR&&!symbols)modifier(controls,shiftButton(controls));
+   Button comma=key(controls,lang==KeyboardLayout.Language.AR?"،":",","Comma",.65f,()->insert(lang==KeyboardLayout.Language.AR?"،":","));comma.setOnLongClickListener(v->showAlternatives(comma,comma.getText().toString()));
   }
-  voiceKey=null;if(active&&settings.voice()&&!settings.incognito()&&policy.allowPersonalization&&!policy.sensitive)voiceKey=key(controls,"Mic","Offline voice typing",1.5f,this::toggleVoice);
-  Button del=key(controls,"⌫","Delete",1.3f,this::delete);
-  del.setOnLongClickListener(v->{if(!active)return true;heldDelete=del;delete();deleteTimer.postDelayed(deleteRepeat,90);return true;});
-  del.setOnTouchListener((v,e)->{int a=e.getActionMasked();if(a==MotionEvent.ACTION_UP||a==MotionEvent.ACTION_CANCEL||a==MotionEvent.ACTION_POINTER_DOWN)stopDeleteRepeat();else if(a==MotionEvent.ACTION_MOVE&&(e.getX()<0||e.getX()>=v.getWidth()||e.getY()<0||e.getY()>=v.getHeight()))stopDeleteRepeat();return false;});
-  Button space=key(controls,lang==KeyboardLayout.Language.AR?"مسافة":"Space","Space",3f,()->insert(" "));if(!policy.sensitive&&settings.spaceCursor())space.setOnTouchListener(new SpaceCursor());key(controls,"↵","Editor action",1.3f,this::enter);
+  if(policy.numeric||symbols||lang==KeyboardLayout.Language.AR)modifier(controls,deleteButton(controls));
+  Button space=key(controls,lang==KeyboardLayout.Language.AR?"العربية":"English","Space",4f,()->insert(" "));if(!policy.sensitive&&settings.spaceCursor())space.setOnTouchListener(new SpaceCursor());if(!policy.numeric){Button dot=key(controls,".","Period",.65f,()->insert("."));dot.setOnLongClickListener(v->showAlternatives(dot,"."));}action(key(controls,"↵","Editor action",1.2f,this::enter));
  }
- private void editorToolbar(){
-  LinearLayout tools=row();
+ private void editorToolbar(LinearLayout tools){
   key(tools,"←","Cursor left",1f,()->moveCursor(KeyEvent.KEYCODE_DPAD_LEFT));
   key(tools,"→","Cursor right",1f,()->moveCursor(KeyEvent.KEYCODE_DPAD_RIGHT));
   key(tools,"All","Select all",1f,()->editorAction(android.R.id.selectAll));
   key(tools,"Copy","Copy selected",1f,()->editorAction(android.R.id.copy));
   key(tools,"Cut","Cut selected",1f,()->editorAction(android.R.id.cut));
   key(tools,"Paste","Paste",1f,()->editorAction(android.R.id.paste));
-  if(settings.clipboard()&&toolsAllowed())key(tools,"Clip","Session clipboard",1f,()->openPanel(1));
-  if(settings.emoji()&&toolsAllowed())key(tools,"☺","Emoji panel",1f,()->openPanel(2));
+
+ }
+ private void addWeightSpace(LinearLayout row,float weight){row.addView(new View(this),new LinearLayout.LayoutParams(0,1,weight));}
+ private void decorate(Button b,int color,int text){GradientDrawable bg=new GradientDrawable();bg.setColor(color);bg.setCornerRadius(dp(style.radius));b.setTextColor(text);b.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(style.press),bg,null));}
+ private void modifier(LinearLayout row,Button b){decorate(b,style.modifier,style.text);b.setTextSize(Math.min(20,style.fontSize));}
+ private void action(Button b){decorate(b,style.action,style.actionText);}
+ private Button shiftButton(LinearLayout row){Button b=key(row,capsLock?"⇪":"⇧",capsLock?"Caps lock":"Shift or diacritics",1.25f,()->{cancelVoice();clearComposition(true);if(capsLock){capsLock=false;shift=false;}else shift=!shift;render();});if(lang==KeyboardLayout.Language.EN&&!symbols)b.setOnLongClickListener(v->{cancelVoice();clearComposition(true);capsLock=!capsLock;shift=capsLock;render();return true;});return b;}
+ private Button deleteButton(LinearLayout row){Button b=key(row,"⌫","Delete",1.25f,this::delete);b.setOnLongClickListener(v->{if(!active)return true;heldDelete=b;delete();deleteTimer.postDelayed(deleteRepeat,90);return true;});b.setOnTouchListener((v,e)->{int a=e.getActionMasked();if(a==MotionEvent.ACTION_UP||a==MotionEvent.ACTION_CANCEL||a==MotionEvent.ACTION_POINTER_DOWN)stopDeleteRepeat();else if(a==MotionEvent.ACTION_MOVE&&(e.getX()<0||e.getX()>=v.getWidth()||e.getY()<0||e.getY()>=v.getHeight()))stopDeleteRepeat();return false;});return b;}
+ private boolean showAlternatives(Button anchor,String value){String[] choices=KeyboardLayout.alternatives(value);if(choices.length==0||!active)return false;if(alternatePopup!=null)alternatePopup.dismiss();LinearLayout row=new LinearLayout(this);row.setPadding(dp(4),dp(4),dp(4),dp(4));GradientDrawable bg=new GradientDrawable();bg.setColor(style.background);bg.setCornerRadius(dp(12));row.setBackground(bg);for(String choice:choices){Button b=new Button(this);b.setAllCaps(false);b.setText(choice);b.setTextSize(20);b.setTextColor(style.text);decorate(b,style.key,style.text);row.addView(b,new LinearLayout.LayoutParams(dp(38),dp(46)));b.setOnClickListener(v->{if(alternatePopup!=null)alternatePopup.dismiss();alternatePopup=null;insert(choice);});}alternatePopup=new PopupWindow(row,Math.min(getResources().getDisplayMetrics().widthPixels,dp(8+38*choices.length)),dp(54),true);alternatePopup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));alternatePopup.setOutsideTouchable(true);alternatePopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);alternatePopup.showAsDropDown(anchor,0,-anchor.getHeight()-dp(54));return true;}
+ private void openSettings(){cancelVoice();clearComposition(true);android.content.Intent i=new android.content.Intent(this,SetupActivity.class);i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(i);}
+ private void restoreBar(){
+  if(strip==null||settings==null||glidePending||composingConnection!=null||voice.busy()||!pendingVoice.isEmpty())return;
+  strip.removeAllViews();voiceKey=null;
+  boolean allowed=toolsAllowed()&&panel==0&&!policy.numeric;strip.setVisibility(allowed?View.VISIBLE:View.GONE);if(!allowed)return;
+  buildingBar=true;try{
+   if(settings.editorTools())key(strip,toolsExpanded?"‹":"⋯","Editor tools",.8f,()->{toolsExpanded=!toolsExpanded;restoreBar();});
+   if(toolsExpanded&&settings.editorTools()){editorToolbar(strip);return;}
+   if(settings.emoji())key(strip,"☺","Emoji panel",1f,()->openPanel(2));
+   if(settings.clipboard())key(strip,"▣","Session clipboard",1f,()->openPanel(1));
+   TextView mode=new TextView(this);mode.setText(lang==KeyboardLayout.Language.AR?"العربية":"English");mode.setTextColor(style.muted);mode.setGravity(Gravity.CENTER);strip.addView(mode,new LinearLayout.LayoutParams(0,dp(barHeight),2f));
+   voiceKey=key(strip,"🎙","Offline voice typing",1f,()->{if(settings.voice())toggleVoice();else openSettings();});
+   key(strip,"⚙","Keyboard settings",1f,this::openSettings);
+  }finally{buildingBar=false;}
  }
  private boolean toolsAllowed(){return active&&settings!=null&&policy.allowPersonalization&&!policy.sensitive&&!settings.incognito();}
  private void clearTransientPanels(){emojiSearchMode=false;emojiQuery="";emojiQueryLabel=null;emojiMatches=null;clipboardTimer.removeCallbacks(clipboardExpiry);clipboard.clear();if(panel!=0&&root!=null){root.reset();root.removeAllViews();}panel=0;}
- private void resetPanels(){if(!toolsAllowed()||!settings.clipboard())clearTransientPanels();else panel=0;}
+ private void resetPanels(){toolsExpanded=false;if(!toolsAllowed()||!settings.clipboard())clearTransientPanels();else panel=0;}
  private void openPanel(int value){if(!toolsAllowed())return;cancelVoice();clearComposition(true);emojiSearchMode=false;emojiQuery="";emojiQueryArabic=lang==KeyboardLayout.Language.AR;panel=value;render();}
  private void renderPanel(){
   LinearLayout controls=row();key(controls,"ABC","Back to keyboard",1f,()->{panel=0;emojiSearchMode=false;emojiQuery="";emojiQueryLabel=null;emojiMatches=null;render();});
@@ -202,8 +224,8 @@ public final class ZeroImeService extends InlineImeService {
   key(reviewRow,"×","Discard dictated text",.7f,this::cancelVoice);
  }
  private void clearComposition(boolean finish){
-  InputConnection old=composingConnection;composingConnection=null;composed="";confirmed=false;composingStart=-1;composingEnd=-1;if(strip!=null)strip.removeAllViews();
-  if(finish&&old!=null&&old==getCurrentInputConnection())old.finishComposingText();
+  InputConnection old=composingConnection;composingConnection=null;composed="";confirmed=false;composingStart=-1;composingEnd=-1;if(old!=null&&strip!=null)strip.removeAllViews();
+  if(finish&&old!=null&&old==getCurrentInputConnection())old.finishComposingText();if(old!=null)restoreBar();
  }
  private void toggleVoice(){
   if(!voiceAllowed())return;
@@ -225,7 +247,7 @@ public final class ZeroImeService extends InlineImeService {
   clearComposition(true);if(c!=getCurrentInputConnection())return;
   boolean ar=lang==KeyboardLayout.Language.AR,imported=settings.importedDictionary();List<String> personal=settings.personalWords(ar);
   DictionaryResourceStore resources=dictionaries;long token=++glideGeneration;glidePending=true;
-  TextView status=new TextView(this);status.setText("Recognizing…");status.setTextColor(style.text);if(strip!=null)strip.addView(status);
+  TextView status=new TextView(this);status.setText("Recognizing…");status.setTextColor(style.text);if(strip!=null){strip.removeAllViews();strip.setVisibility(View.VISIBLE);strip.addView(status,new LinearLayout.LayoutParams(-1,dp(barHeight)));}
   glideWorker.execute(()->{if(token!=glideGeneration)return;
    List<GeometricRanker.Candidate> candidates;
    try{List<String> words=FrequencyLexicon.merge(SeedLexicon.words(ar),personal,imported?resources.words(ar):Collections.emptyList());candidates=ranker.rank(trace,centers,words,3);}
@@ -236,11 +258,11 @@ public final class ZeroImeService extends InlineImeService {
  }
  private void applyGlide(long token,InputConnection c,List<GeometricRanker.Candidate> candidates){
   if(token!=glideGeneration)return;glidePending=false;if(strip!=null)strip.removeAllViews();
-  if(!glideAllowed()||!isInputViewShown()||c!=getCurrentInputConnection()||candidates.isEmpty()||candidates.get(0).score>2.0)return;
+  if(!glideAllowed()||!isInputViewShown()||c!=getCurrentInputConnection()||candidates.isEmpty()||candidates.get(0).score>2.0){restoreBar();return;}
   String word=candidates.get(0).word+(settings.space()?" ":"");
   composingConnection=c;composed=word;confirmed=false;
   if(!c.setComposingText(word,1)){clearComposition(false);return;}
-  for(GeometricRanker.Candidate option:candidates)key(strip,option.word,"Glide candidate "+option.word,1f,()->choose(option.word));
+  buildingBar=true;try{for(GeometricRanker.Candidate option:candidates)key(strip,option.word,"Glide candidate "+option.word,1f,()->choose(option.word));}finally{buildingBar=false;}
  }
  @Override public void onUpdateSelection(int oldSelStart,int oldSelEnd,int newSelStart,int newSelEnd,int candidatesStart,int candidatesEnd){
   super.onUpdateSelection(oldSelStart,oldSelEnd,newSelStart,newSelEnd,candidatesStart,candidatesEnd);
@@ -258,13 +280,13 @@ public final class ZeroImeService extends InlineImeService {
   // Replace only the framework-confirmed composing span, never surrounding text.
   String replacement=word+(settings.space()?" ":"");
   composingConnection=null;confirmed=false;composed="";if(strip!=null)strip.removeAllViews();
-  c.commitText(replacement,1);
+  c.commitText(replacement,1);restoreBar();
  }
  private void insert(String value){
   cancelVoice();clearComposition(true);InputConnection c=getCurrentInputConnection();if(c==null)return;c.commitText(value,1);
-  if(shift&&!capsLock&&!symbols){shift=false;render();}
+  if(shift&&!capsLock&&!symbols){shift=false;render();}else if(strip!=null&&strip.getChildCount()==0)restoreBar();
  }
- private void stopDeleteRepeat(){deleteTimer.removeCallbacks(deleteRepeat);heldDelete=null;}
+ private void stopDeleteRepeat(){if(alternatePopup!=null){alternatePopup.dismiss();alternatePopup=null;}deleteTimer.removeCallbacks(deleteRepeat);heldDelete=null;}
  private void repeatDelete(){if(!active||heldDelete==null||!heldDelete.isAttachedToWindow()||!isInputViewShown()){stopDeleteRepeat();return;}delete();deleteTimer.postDelayed(deleteRepeat,75);}
  private void delete(){
   cancelVoice();clearComposition(true);InputConnection c=getCurrentInputConnection();if(c==null)return;

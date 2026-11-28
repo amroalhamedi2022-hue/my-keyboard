@@ -13,6 +13,7 @@ final class GlideSurface extends LinearLayout {
  private final Map<View,String> letters=new LinkedHashMap<>();
  private final ArrayList<Point> points=new ArrayList<>();
  private final Map<Integer,Point> centers=new HashMap<>();
+ private final Map<View,RectF> bounds=new LinkedHashMap<>();
  private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
  private final Path path=new Path();
  private final int[] origin=new int[2],location=new int[2];
@@ -24,10 +25,11 @@ final class GlideSurface extends LinearLayout {
  void trailStyle(int color,int widthDp){paint.setColor(color);paint.setStrokeWidth(widthDp*getResources().getDisplayMetrics().density);invalidate();}
  void configure(boolean active,boolean trail){reset();letters.clear();enabled=active;showTrail=trail;}
  void register(View v,String label){if(label.codePointCount(0,label.length())==1&&Character.isLetter(label.codePointAt(0)))letters.put(v,label);}
- void reset(){tracking=false;dragging=false;pointer=-1;first=null;points.clear();centers.clear();path.reset();invalidate();}
+ void reset(){tracking=false;dragging=false;pointer=-1;first=null;points.clear();centers.clear();bounds.clear();path.reset();invalidate();}
  private View hit(float x,float y){
-  for(View v:letters.keySet()){v.getLocationOnScreen(location);float l=location[0]-origin[0],t=location[1]-origin[1];if(x>=l&&x<l+v.getWidth()&&y>=t&&y<t+v.getHeight())return v;}return null;
+  for(Map.Entry<View,RectF> entry:bounds.entrySet())if(entry.getValue().contains(x,y))return entry.getKey();return null;
  }
+ private void cacheBounds(){getLocationOnScreen(origin);bounds.clear();for(View v:letters.keySet()){v.getLocationOnScreen(location);float l=location[0]-origin[0],t=location[1]-origin[1];bounds.put(v,new RectF(l,t,l+v.getWidth(),t+v.getHeight()));}}
  private void geometry(){
   getLocationOnScreen(origin);
   unit=first==null?1:Math.max(1,first.getWidth());
@@ -43,7 +45,7 @@ final class GlideSurface extends LinearLayout {
  @Override public boolean onInterceptTouchEvent(android.view.MotionEvent e){
   switch(e.getActionMasked()){
    case MotionEvent.ACTION_DOWN:
-    reset();if(!enabled)return false;getLocationOnScreen(origin);
+    reset();if(!enabled)return false;cacheBounds();
     first=hit(e.getX(),e.getY());if(first==null)return false;
     tracking=true;pointer=e.getPointerId(0);downX=e.getX();downY=e.getY();geometry();add(downX,downY);return false;
    case MotionEvent.ACTION_MOVE:
@@ -52,7 +54,7 @@ final class GlideSurface extends LinearLayout {
     for(int h=0;h<e.getHistorySize();h++)add(e.getHistoricalX(i,h),e.getHistoricalY(i,h));
     add(x,y);
     View other=hit(x,y);
-    if(other!=null&&other!=first&&Math.hypot(x-downX,y-downY)>unit*.5f){dragging=true;return true;}return false;
+    if(other!=null&&other!=first&&Math.hypot(x-downX,y-downY)>unit*.8f){dragging=true;return true;}return false;
    case MotionEvent.ACTION_POINTER_DOWN: case MotionEvent.ACTION_UP: case MotionEvent.ACTION_CANCEL: reset();return false;
    default:return false;
   }

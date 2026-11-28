@@ -27,3 +27,5 @@ Batch 07 tools follow-up: compile and test new UI search, emoji insertion/tone, 
 Owner alpha priority: run corrected CI once; inspect failure if any; acquire unsigned release artifact and apksig kit, sign locally with owner Library key, verify certificate/package/version, deliver signed owner alpha only. Keep same certificate and application ID for updates. See docs/RELEASE_ALPHA01.md.
 
 Alpha01 signed and saved. Next use same key, package ID and higher versionCode; owner can try signed alpha now. Prioritize IME registration/activation runtime diagnosis and testing signed build on real Android, then actual voice and glide. Avoid rebuilding simply for documentation. See docs/RELEASE_ALPHA01.md.
+
+Alpha02: verify compact layout in both languages on owner tablet, long-press variants, toolbar/candidates, settings navigation and voice entry. Continue actual voice/glide accuracy benchmarks. Sign code 101 only with existing key after build.

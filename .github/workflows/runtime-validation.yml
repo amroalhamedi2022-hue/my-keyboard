@@ -61,6 +61,10 @@ jobs:
           javac -encoding UTF-8 -d /tmp/zero-batch6 app/src/main/java/com/zerokeyboard/ime/glide/PersonalLexicon.java app/src/main/java/com/zerokeyboard/ime/glide/GeometricRanker.java app/src/main/java/com/zerokeyboard/ime/tools/ClipboardHistory.java research/tools/Batch6Smoke.java research/glide/RankerEquivalence.java
           java -ea -cp /tmp/zero-batch6 Batch6Smoke
           java -ea -cp /tmp/zero-batch6 RankerEquivalence
+      - name: Compact keyboard geometry
+        run: |
+          javac -encoding UTF-8 -d /tmp/compact app/src/main/java/com/zerokeyboard/ime/CompactMetrics.java app/src/main/java/com/zerokeyboard/ime/KeyboardLayout.java research/layout/CompactSmoke.java
+          java -ea -cp /tmp/compact CompactSmoke
       - name: Generate JNI header for review
         run: |
           mkdir -p runtime-results
@@ -82,12 +86,12 @@ jobs:
           APK=app/build/outputs/apk/release/app-release-unsigned.apk
           test -f "$APK"
           TOOL="$ANDROID_HOME/build-tools/35.0.0"
-          "$TOOL/zipalign" -P 16 -f 4 "$APK" release-output/Zero-Keyboard-0.1.0-alpha01-unsigned.apk
-          "$TOOL/zipalign" -c -P 16 4 release-output/Zero-Keyboard-0.1.0-alpha01-unsigned.apk
-          "$TOOL/aapt" dump badging release-output/Zero-Keyboard-0.1.0-alpha01-unsigned.apk > release-output/badging.txt
-          "$TOOL/aapt" dump permissions release-output/Zero-Keyboard-0.1.0-alpha01-unsigned.apk > release-output/permissions.txt
+          "$TOOL/zipalign" -P 16 -f 4 "$APK" release-output/Zero-Keyboard-0.1.0-alpha02-unsigned.apk
+          "$TOOL/zipalign" -c -P 16 4 release-output/Zero-Keyboard-0.1.0-alpha02-unsigned.apk
+          "$TOOL/aapt" dump badging release-output/Zero-Keyboard-0.1.0-alpha02-unsigned.apk > release-output/badging.txt
+          "$TOOL/aapt" dump permissions release-output/Zero-Keyboard-0.1.0-alpha02-unsigned.apk > release-output/permissions.txt
           if grep -q 'android.permission.INTERNET' release-output/permissions.txt; then exit 1; fi
-          grep -q "package: name='com.zerokeyboard.ime' versionCode='100'" release-output/badging.txt
+          grep -q "package: name='com.zerokeyboard.ime' versionCode='101'" release-output/badging.txt
           JAR="$(find "$HOME/.gradle/caches/modules-2/files-2.1/com.android.tools.build/apksig/8.7.3" -name 'apksig-8.7.3.jar' -print -quit)"
           test -f "$JAR"
           cp "$JAR" release-output/apksig-8.7.3.jar
@@ -100,7 +104,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: zero-alpha01-unsigned-owner-signing-kit
+          name: zero-alpha02-unsigned-owner-signing-kit
           if-no-files-found: warn
           path: release-output/
       - name: Enable hardware acceleration

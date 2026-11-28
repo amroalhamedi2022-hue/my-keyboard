@@ -27,3 +27,5 @@ Initial repository, requirement register, manual CI configuration, Android IME s
 - Batch 07 tools: bilingual offline emoji search and limited skin tones, preliminary semantic theme tokens and key/trail customization, optional feedback, clipboard expiry/privacy hardening, and microphone cleanup ordering. 52 pure-JVM checks pass; Android validation pending.
 
 - Owner alpha milestone: SDK setup fix from actual CI logs, version code 100, stable release certificate and offline signing path, caps lock, repeat backspace, quick punctuation and stricter no-personalization toolbar policy. Build and device validation pending.
+
+- Alpha02: compact three-row keyboard, consolidated toolbar/candidates, improved key placement and styling, alternate characters, expandable settings categories, cached gesture geometry. Build/runtime pending.

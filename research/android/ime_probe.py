@@ -103,7 +103,7 @@ class Probe:
             self.adb("shell", "settings", "put", "secure", "show_ime_with_hard_keyboard", "1")
             self.adb("shell", "am", "start", "-W", "-n", ACTIVITY)
             self.focus("zero_probe_normal")
-            self.check("normal voice and toolbar available", lambda x: bool(matching(x,"Offline voice typing")) and bool(matching(x,"Copy selected")))
+            self.check("normal voice and toolbar available", lambda x: bool(matching(x,"Offline voice typing")) and bool(matching(x,"Editor tools")))
             xml=self.tree()
             if not matching(xml,"q"):
                 self.tap("Switch language")
