@@ -5,6 +5,7 @@ on:
     types: [labeled]
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: zero-mature-core-candidate
   cancel-in-progress: false
@@ -46,6 +47,7 @@ jobs:
           python3 research/rebase/prepare_candidate.py upstream/heliboard .
           if [ "${{ github.event.label.name }}" = 'zero-mature-voice-candidate' ]; then
             python3 research/rebase/attach_voice.py upstream/heliboard .
+            python3 research/rebase/add_geometry_probe.py upstream/heliboard
           fi
           git -C upstream/heliboard diff --check
           git -C upstream/heliboard diff > candidate-results/upstream-changes.patch
@@ -66,6 +68,32 @@ jobs:
           ! grep -E 'android.permission.(INTERNET|READ_CONTACTS)' candidate-results/permissions.txt
           sha256sum "$APK" > candidate-results/apk.sha256
           cp "$APK" candidate-results/zero-mature-core-debug-evaluation.apk
+      - name: Download synthetic editor fixture from verified Alpha02 build
+        if: github.event.label.name == 'zero-mature-voice-candidate'
+        uses: actions/download-artifact@v4
+        with:
+          name: zero-debug-engineering-apk-not-release
+          run-id: 46130671231
+          github-token: ${{ github.token }}
+          path: fixture
+      - name: Enable KVM for actual touch tests
+        if: github.event.label.name == 'zero-mature-voice-candidate'
+        run: |
+          test -e /dev/kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Real mature keyboard touch smoke
+        if: github.event.label.name == 'zero-mature-voice-candidate'
+        uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-linux-hw-accel: false
+          script: python3 research/rebase/device_probe.py --candidate candidate-results/zero-mature-core-debug-evaluation.apk --fixture "$(find fixture -name '*.apk' -print -quit)" --out candidate-results/runtime
       - name: Preserve candidate evidence
         if: always()
         uses: actions/upload-artifact@v4
