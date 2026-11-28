@@ -76,10 +76,12 @@ def main():
     a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True);result={"checks":[]}
     try:
         adb("install","-r",str(a.fixture));adb("install","-r",str(a.candidate))
+        adb("shell","am","start","-W","-n",PACKAGE+"/helium314.keyboard.settings.SettingsActivity")
         wait(lambda:IME in adb("shell","ime","list","-a","-s").decode())
         adb("shell","ime","enable",IME);adb("shell","ime","set",IME)
         adb("shell","settings","put","secure","show_ime_with_hard_keyboard","1")
         adb("shell","am","start","-W","-n",FIXTURE)
+        snapshot(a.out,"fixture-before-focus")
         focus("zero_probe_normal")
         snapshot(a.out,"normal-initial")
         language(False);snapshot(a.out,"english")

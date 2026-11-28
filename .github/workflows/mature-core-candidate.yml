@@ -56,6 +56,7 @@ jobs:
             fi
             python3 research/rebase/add_geometry_probe.py upstream/heliboard
           fi
+          python3 research/rebase/check_prepared.py upstream/heliboard
           git -C upstream/heliboard diff --check
           git -C upstream/heliboard diff > candidate-results/upstream-changes.patch
           git rev-parse HEAD > candidate-results/zero-source-commit.txt

@@ -24,7 +24,7 @@ replace(service,"    private boolean allowed(){",'''    // Evaluation-only stati
                 item.put("y",origin[1]+view.getPaddingTop()+key.getY()+key.getHeight()/2);
                 result.put(item);
             }
-            java.io.File file=new java.io.File(createCredentialProtectedStorageContext().getFilesDir(),"zero-eval-geometry.json");
+            java.io.File file=new java.io.File(getApplicationContext().getFilesDir(),"zero-eval-geometry.json");
             android.util.AtomicFile atomic=new android.util.AtomicFile(file);java.io.FileOutputStream stream=atomic.startWrite();
             try{stream.write(result.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));atomic.finishWrite(stream);}catch(Exception e){atomic.failWrite(stream);}
         }catch(Exception ignored){}

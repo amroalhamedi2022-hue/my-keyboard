@@ -11,8 +11,7 @@ for name in ["GeometricRanker.java","FrequencyLexicon.java","PersonalLexicon.jav
 for name in ["GestureGate.java","MatureGlide.java"]:
     shutil.copy2(zero/"research/rebase/glide"/name,glide/name)
 shutil.copytree(zero/"app/src/main/assets/dictionaries",app/"src/main/assets/dictionaries",dirs_exist_ok=True)
-# Preserve CE resource path for legacy imported dictionaries.
-replace(glide/"DictionaryResourceStore.java","context=c.getApplicationContext();","context=c.createCredentialProtectedStorageContext();")
+# The prepared manifest uses CE storage; original resource path is preserved.
 view=app/"src/main/java/helium314/keyboard/keyboard/MainKeyboardView.java"
 replace(view,"    public boolean onTouchEvent(final MotionEvent event) {","    public boolean onTouchEvent(final MotionEvent event) {\n        if (zeroGlide != null && zeroGlide.onTouch(this, event, isShowingPopupKeysPanel())) return true;")
 replace(view,"    public boolean processMotionEvent(final MotionEvent event) {","    private com.zerokeyboard.ime.glide.MatureGlide zeroGlide;\n    public void setZeroGlide(com.zerokeyboard.ime.glide.MatureGlide glide) { zeroGlide = glide; }\n\n    public boolean processMotionEvent(final MotionEvent event) {")

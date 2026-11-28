@@ -14,7 +14,7 @@ public final class VoiceSetupActivity extends Activity {
     private ModelStore models;private SharedPreferences prefs;private TextView status;
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
-        Context storage=createCredentialProtectedStorageContext();
+        Context storage=getApplicationContext();
         prefs=storage.getSharedPreferences("zero_settings",MODE_PRIVATE);models=new ModelStore(storage);
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(20),dp(16),dp(20),dp(20));
         TextView title=new TextView(this);title.setText("Zero Voice");title.setTextSize(28);root.addView(title);

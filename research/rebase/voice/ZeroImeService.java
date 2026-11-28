@@ -32,9 +32,9 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {
     private InputConnection target;
     private boolean processing;
     private SharedPreferences prefs() {
-        return createCredentialProtectedStorageContext().getSharedPreferences("zero_settings", MODE_PRIVATE);
+        return getApplicationContext().getSharedPreferences("zero_settings", MODE_PRIVATE);
     }
-    private Context storage() { return createCredentialProtectedStorageContext(); }
+    private Context storage() { return getApplicationContext(); }
     @Override public void onCreate(){ super.onCreate(); voice=new VoiceSession(); }
     @Override public void setInputView(View view){ cancelVoice(); super.setInputView(view); anchor=view; }
     @Override public void onStartInput(EditorInfo info,boolean restarting){ cancelVoice(); super.onStartInput(info,restarting); }

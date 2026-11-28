@@ -34,7 +34,10 @@ def prepare(upstream, zero):
     manifest = app / "src/main/AndroidManifest.xml"
     replace(manifest,'android:name="LatinIME"','android:name="com.zerokeyboard.ime.ZeroImeService"')
     replace(manifest,'android:allowBackup="true"','android:allowBackup="false"')
-    # Keep upstream direct-boot implementation for this candidate: audit its storage before release.
+    # Public Android SDK cannot construct a CE context from a DE-default app.
+    # Use ordinary credential-protected application storage, as Alpha01/02 did.
+    replace(manifest,'android:defaultToDeviceProtectedStorage="true"','android:defaultToDeviceProtectedStorage="false"')
+    replace(manifest,'android:directBootAware="true"','android:directBootAware="false"',2)
     replace(manifest,'    <uses-permission android:name="android.permission.READ_CONTACTS" />\n','')
     replace(manifest,'android:label="@string/english_ime_name"','android:label="Zero Keyboard"',2)
     wrapper = app / "src/main/java/com/zerokeyboard/ime/ZeroImeService.java"
@@ -48,7 +51,8 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
     for key,value in {
         "PREF_AUTO_CORRECTION":"false","PREF_SUGGEST_CLIPBOARD_CONTENT":"false",
         "PREF_ENABLE_CLIPBOARD_HISTORY":"false","PREF_SHOW_LANGUAGE_SWITCH_KEY":"true",
-        "PREF_GESTURE_INPUT":"false","PREF_ALWAYS_INCOGNITO_MODE":"true",
+        "PREF_GESTURE_INPUT":"false","PREF_ALWAYS_INCOGNITO_MODE":"false",
+        "PREF_KEY_USE_PERSONALIZED_DICTS":"false",
         "PREF_USE_CONTACTS":"false"
     }.items():
         source=defaults.read_text(encoding="utf-8")
@@ -110,6 +114,8 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
     assert "android.permission.INTERNET" not in permissions
     assert "android.permission.READ_CONTACTS" not in permissions
     assert root.find("application").get(NS+"allowBackup")=="false"
+    assert root.find("application").get(NS+"defaultToDeviceProtectedStorage")=="false"
+    assert root.find("application").get(NS+"directBootAware")=="false"
     assert any(n.get(NS+"name")==PACKAGE+".ZeroImeService" for n in root.findall("application/service"))
     print("Prepared pinned mature core candidate; voice staged, not integrated; no signing key used.")
 
