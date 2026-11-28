@@ -11,6 +11,8 @@ import xml.etree.ElementTree as ET
 PIN = "f8ec91a982835911cc224fa99434c3396d4cd562"
 PACKAGE = "com.zerokeyboard.ime"
 NS = "{http://schemas.android.com/apk/res/android}"
+VERSION_CODE = 105
+VERSION_NAME = "0.2.3-engine-preview"
 
 def replace(path, before, after, count=1):
     text = path.read_text(encoding="utf-8")
@@ -26,8 +28,8 @@ def prepare(upstream, zero):
     for before,after in [
         ('applicationId = "helium314.keyboard"','applicationId = "com.zerokeyboard.ime"'),
         ('minSdk = 21','minSdk = 29'),
-        ('versionCode = 3603','versionCode = 104'),
-        ('versionName = "3.6"','versionName = "0.2.2-engine-preview"'),
+        ('versionCode = 3603',f'versionCode = {VERSION_CODE}'),
+        ('versionName = "3.6"',f'versionName = "{VERSION_NAME}"'),
         ('listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")','listOf("arm64-v8a", "x86_64")'),
     ]:
         replace(gradle,before,after)
@@ -83,6 +85,9 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
 """,encoding="utf-8")
     # Share the existing editor and plain-text policies with the mature clipboard.
     shutil.copy2(zero/"app/src/main/java/com/zerokeyboard/ime/EditorPolicy.java", wrapper.parent/"EditorPolicy.java")
+    for qualifier in ("values", "values-ar"):
+        shutil.copy2(zero / "research/rebase/res" / qualifier / "zero_strings.xml",
+                     app / "src/main/res" / qualifier / "zero_strings.xml")
     (wrapper.parent/"tools").mkdir(exist_ok=True)
     shutil.copy2(zero/"app/src/main/java/com/zerokeyboard/ime/tools/ClipboardHistory.java",
                  wrapper.parent/"tools/ClipboardHistory.java")
@@ -176,10 +181,42 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
         if n!=1: raise ValueError("unexpected default: "+key)
         defaults.write_text(source,encoding="utf-8")
     replace(defaults, "const val PREF_KEYPRESS_SOUND_VOLUME = -0.01f", "const val PREF_KEYPRESS_SOUND_VOLUME = 0.19f")
-    # Compact tablet portrait default: explicit user height choices remain authoritative.
-    replace(defaults, "        val dm = context.resources.displayMetrics",
-        """        val dm = context.resources.displayMetrics
-        PREF_KEYBOARD_HEIGHT_SCALE[0] = if (context.resources.configuration.smallestScreenWidthDp >= 600) 0.82f else 1.0f""")
+    replace(defaults, "var PREF_POPUP_ON = true", "val PREF_POPUP_ON = true")
+    replace(defaults, """        val dm = context.resources.displayMetrics
+        val px600 = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 600f, dm)
+        PREF_POPUP_ON = dm.widthPixels >= px600 || dm.heightPixels >= px600""",
+            """        PREF_KEYBOARD_HEIGHT_SCALE[0] =
+            if (context.resources.configuration.smallestScreenWidthDp >= 600) 0.82f else 1.0f""")
+    replace(defaults, "import android.util.TypedValue\n", "")
+    for key, old, new in [
+        ("PREF_THEME_STYLE", "STYLE_MATERIAL", "STYLE_ROUNDED"),
+        ("PREF_THEME_COLORS", "THEME_LIGHT", "THEME_ZERO_LIGHT"),
+        ("PREF_THEME_COLORS_NIGHT", "THEME_DARK", "THEME_ZERO_DARK"),
+    ]:
+        replace(defaults, f"const val {key} = KeyboardTheme.{old}",
+                f"const val {key} = KeyboardTheme.{new}")
+    theme = keyboard / "KeyboardTheme.kt"
+    replace(theme, '        const val THEME_LIGHT = "light"',
+            '''        const val THEME_ZERO_LIGHT = "zero_glass_light"
+        const val THEME_ZERO_DARK = "zero_glass_dark"
+        const val THEME_LIGHT = "light"''')
+    replace(theme, '            if (!isNight) THEME_LIGHT else null, THEME_DARK,',
+            '''            if (!isNight) THEME_ZERO_LIGHT else null, THEME_ZERO_DARK,
+            if (!isNight) THEME_LIGHT else null, THEME_DARK,''')
+    replace(theme, "                THEME_LIGHT -> DefaultColors(",
+            '''                THEME_ZERO_LIGHT -> DefaultColors(
+                    themeStyle, hasBorders, 0xFF2256B5.toInt(), 0xFFE9EEF7.toInt(),
+                    0xFFFAFCFF.toInt(), 0xFFD6E3F7.toInt(), 0xFFF9FBFF.toInt(),
+                    0xFF19283D.toInt(), 0xFF4B5B71.toInt(),
+                    keyboardBackground = backgroundImage
+                )
+                THEME_ZERO_DARK -> DefaultColors(
+                    themeStyle, hasBorders, 0xFF9EC3FF.toInt(), 0xFF121A29.toInt(),
+                    0xFF26344A.toInt(), 0xFF30486B.toInt(), 0xFF243752.toInt(),
+                    0xFFF2F6FF.toInt(), 0xFFB7C6DF.toInt(),
+                    keyboardBackground = backgroundImage
+                )
+                THEME_LIGHT -> DefaultColors(''')
     source=defaults.read_text(encoding="utf-8")
     source,n=re.subn(r'(?m)^    const val PREF_ADDITIONAL_SUBTYPES = .*?\n            .*?\n            .*?$', '    const val PREF_ADDITIONAL_SUBTYPES = ""',source)
     if n!=1: raise ValueError("additional subtype defaults changed")
@@ -241,6 +278,25 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
     replace(ime,'            mRichImm.switchToShortcutIme(this);','            return;')
     attr=java/"InputAttributes.java"
     replace(attr,'mShouldShowVoiceInputKey = !noMicrophone;','mShouldShowVoiceInputKey = false;')
+    replace(attr, "            mNoLearning = false;\n            return;",
+            "            mNoLearning = true;\n            return;")
+    replace(attr, """        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            mNoLearning = (editorInfo.imeOptions & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0;
+        else
+            mNoLearning = false;""",
+            """        mNoLearning = !com.zerokeyboard.ime.EditorPolicy.from(editorInfo).allowPersonalization;""")
+    replace(attr, """        return editorInfo.inputType == mInputType && mEditorInfo != null
+                && (mEditorInfo.imeOptions & EditorInfo.IME_FLAG_FORCE_ASCII) == (editorInfo.imeOptions & EditorInfo.IME_FLAG_FORCE_ASCII);""",
+            """        return editorInfo.inputType == mInputType && mEditorInfo != null
+                && mNoLearning == (!com.zerokeyboard.ime.EditorPolicy.from(editorInfo).allowPersonalization)
+                && java.util.Objects.equals(mEditorInfo.privateImeOptions, editorInfo.privateImeOptions)
+                && (mEditorInfo.imeOptions & EditorInfo.IME_FLAG_FORCE_ASCII) == (editorInfo.imeOptions & EditorInfo.IME_FLAG_FORCE_ASCII);""")
+    logic = java / "inputlogic/InputLogic.java"
+    replace(logic, """        if (settingsValues.mIncognitoModeEnabled) {
+            // still adjust confidences, otherwise incognito input fields can be very annoying when wrong language is active
+            mDictionaryFacilitator.adjustConfidences(word, wasAutoCapitalized);
+            return;
+        }""", """        if (settingsValues.mIncognitoModeEnabled) return;""")
     # Disable the upstream in-app and logcat logger. Native/direct logs still need review.
     log=java/"utils/Log.kt"
     source=log.read_text(encoding="utf-8")

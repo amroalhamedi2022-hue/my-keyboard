@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="theme_name_zero_glass_light">زيرو زجاجي فاتح</string>
+    <string name="theme_name_zero_glass_dark">زيرو زجاجي داكن</string>
+    <string name="zero_voice_permission_granted">تم السماح باستخدام الميكروفون. اضغط عليه مجددًا لبدء الإملاء.</string>
+    <string name="zero_voice_permission_denied">تم رفض إذن الميكروفون. يمكنك السماح به من إعدادات الصوت والكتابة بالسحب.</string>
+    <string name="zero_voice_engine_unavailable">الإملاء الصوتي دون إنترنت غير متاح في هذه النسخة.</string>
+    <string name="zero_voice_private">الإملاء الصوتي غير متاح في هذا الحقل أو في وضع التصفح الخفي.</string>
+    <string name="zero_voice_disabled">الإملاء الصوتي متوقف. يمكنك تفعيله من إعدادات الصوت والكتابة بالسحب.</string>
+    <string name="zero_voice_model_missing">نموذج الإملاء الصوتي غير متاح. راجع إعدادات الصوت والكتابة بالسحب.</string>
+    <string name="zero_voice_model_fallback">يُستخدم نموذج Tiny المضمّن لأن نموذج Base غير مثبت.</string>
+</resources>

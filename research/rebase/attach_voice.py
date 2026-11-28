@@ -33,8 +33,19 @@ path=java/"InputAttributes.java"
 text=path.read_text()
 needle="        mShouldShowVoiceInputKey = false;"
 i=text.rindex(needle)
-text=text[:i]+text[i:].replace(needle,"        mShouldShowVoiceInputKey = com.zerokeyboard.ime.EditorPolicy.from(editorInfo).allowPersonalization && !hasNoMicrophoneKeyOption();",1)
+text=text[:i]+text[i:].replace(needle,"        mShouldShowVoiceInputKey = com.zerokeyboard.ime.EditorPolicy.from(editorInfo).allowPersonalization\n                && !InputTypeUtils.isEmailVariation(variation) && !hasNoMicrophoneKeyOption();",1)
 path.write_text(text)
+# Popup and layout voice keys are local. Upstream only enables them for a system speech IME.
+keyboard=app/"src/main/java/helium314/keyboard/keyboard"
+replace(keyboard/"KeyboardSwitcher.java", "keyboardView.updateShortcutKey(mRichImm.isShortcutImeReady());",
+        "keyboardView.updateShortcutKey(currentSettingsValues.mShowsVoiceInputKey && !currentSettingsValues.mIncognitoModeEnabled);")
+replace(keyboard/"PopupKeysKeyboardView.java", "shortcutKey.setEnabled(RichInputMethodManager.getInstance().isShortcutImeReady());",
+        """final var settings = helium314.keyboard.latin.settings.Settings.getValues();
+            shortcutKey.setEnabled(settings.mShowsVoiceInputKey && !settings.mIncognitoModeEnabled);""")
+strip=java/"suggestions/SuggestionStripView.kt"
+replace(strip, "        val show = Settings.getValues().mShowsVoiceInputKey",
+        """        val settings = Settings.getValues()
+        val show = settings.mShowsVoiceInputKey && !settings.mIncognitoModeEnabled""")
 # Make the local voice button visible without depending on an external speech IME.
 toolbar=java/"utils/ToolbarUtils.kt"
 replace(toolbar,'val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {\n    it.name + Separators.KV + false\n}', 'val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {\n    it.name + Separators.KV + (it == VOICE)\n}')

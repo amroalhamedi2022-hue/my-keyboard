@@ -19,7 +19,7 @@ service=package/"ZeroImeService.java"
 replace(service,"    private VoiceSession voice;","    private VoiceSession voice;\n    private com.zerokeyboard.ime.glide.MatureGlide glide;")
 replace(service,"super.onCreate(); voice=new VoiceSession();","""super.onCreate(); voice=new VoiceSession();
         glide=new com.zerokeyboard.ime.glide.MatureGlide(storage(),new com.zerokeyboard.ime.glide.MatureGlide.Host(){
-            public boolean allowed(){return ZeroImeService.this.allowed()&&!voice.busy();}
+            public boolean allowed(){return ZeroImeService.this.allowed()&&!voice.busy()&&panel==null;}
             public SharedPreferences settings(){return prefs();}
             public InputConnection target(){return getCurrentInputConnection();}
             public void commit(InputConnection target,String word){if(allowed()&&target==getCurrentInputConnection())insertGlide(word);}
@@ -37,7 +37,7 @@ replace(service,"    private boolean allowed(){","""    private void bindGlide()
 replace(service,"        generation++;pending=","        if(glide!=null)glide.invalidate();\n        generation++;pending=")
 replace(service,"if(voice!=null)voice.close(); super.onDestroy();","if(voice!=null)voice.close(); if(glide!=null)glide.close(); super.onDestroy();")
 # Reset gesture state on editor/window changes (ordinary events invalidate only pending results).
-for old in ["super.onStartInput(info,restarting);","super.onFinishInputView(finishing);","super.onFinishInput();","super.onWindowHidden();","super.onConfigurationChanged(c);","super.onCurrentInputMethodSubtypeChanged(subtype);"]:
+for old in ["super.onStartInput(info,restarting);","super.onStartInputView(info,restarting);","super.onFinishInputView(finishing);","super.onFinishInput();","super.onWindowHidden();","super.onConfigurationChanged(c);","super.onCurrentInputMethodSubtypeChanged(subtype);"]:
     replace(service,old,"if(glide!=null)glide.cancel(); "+old)
 setup=package/"VoiceSetupActivity.java"
 replace(setup,'toggle(root,"Enable offline voice","voice_enabled",true);','toggle(root,"Experimental open glide (3+ distinct letters)","mature_glide_enabled",false);\n        toggle(root,"Enable offline voice","voice_enabled",true);')

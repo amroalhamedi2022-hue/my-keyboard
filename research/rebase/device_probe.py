@@ -56,7 +56,7 @@ def tap(code):
     time.sleep(.35)
 
 def check_text(name,expected):
-    wait(lambda:(lambda n:n is not None and n.get("text")==expected)(field(name)))
+    wait(lambda:(lambda n:n is not None and n.get("text","").lower()==expected)(field(name)))
     print("PASS editor text",repr(expected),flush=True)
 
 def language(ar):
@@ -71,6 +71,42 @@ def language(ar):
 
 def snapshot(out,name):
     (out/(name+".png")).write_bytes(adb("exec-out","screencap","-p"))
+
+def find_node(predicate):
+    return next((node for node in tree().iter("node") if predicate(node)), None)
+
+def touch_node(node):
+    coords = tuple(map(int, re.findall(r"\d+", node.get("bounds", ""))))
+    assert len(coords) == 4, node.attrib
+    left, top, right, bottom = coords
+    adb("shell", "input", "tap", str((left + right) // 2), str((top + bottom) // 2))
+
+def microphone():
+    return find_node(lambda n: n.get("content-desc") == "Voice input")
+
+def permission_button(name):
+    return find_node(lambda n: n.get("resource-id", "").endswith(":id/" + name))
+
+def voice_smoke(out, checks):
+    touch_node(wait(microphone))
+    deny = wait(lambda: permission_button("permission_deny_button"))
+    snapshot(out, "voice-permission")
+    touch_node(deny)
+    wait(microphone)
+    check_text("zero_probe_normal", "qwضa")
+    checks.append("microphone requests system permission and denial returns to the editor")
+
+    touch_node(wait(microphone))
+    touch_node(wait(lambda: permission_button("permission_allow_foreground_only_button")))
+    wait(microphone)
+    assert find_node(lambda n: n.get("text", "").startswith("Recording")) is None
+    touch_node(wait(microphone))
+    wait(lambda: find_node(lambda n: n.get("text", "").startswith("Recording")), seconds=90)
+    snapshot(out, "voice-recording")
+    touch_node(wait(lambda: find_node(lambda n: n.get("text") == "Discard")))
+    wait(microphone)
+    check_text("zero_probe_normal", "qwضa")
+    checks.append("bundled model prepares, microphone capture starts on explicit tap and Discard preserves text")
 
 def main():
     p=argparse.ArgumentParser()
@@ -103,8 +139,10 @@ def main():
         tap(ord("a"))
         wait(lambda:(lambda n:n is not None and n.get("text","").lower()=="qwضa")(field("zero_probe_normal")))
         result["checks"].append("switch back to English")
+        voice_smoke(a.out, result["checks"])
         focus("zero_probe_password");snapshot(a.out,"password")
-        result["checks"].append("password field focused; screenshot for manual privacy review")
+        assert microphone() is None
+        result["checks"].append("voice toolbar action hidden in password field")
     except Exception as e:
         result["error"]=str(e)
         if isinstance(e,subprocess.CalledProcessError):result["stderr"]=(e.stderr or b"").decode(errors="replace")[-2000:]

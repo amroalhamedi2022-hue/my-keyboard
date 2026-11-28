@@ -90,7 +90,7 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           "$AAPT" dump badging "$APK" > candidate-results/badging.txt
           "$AAPT" dump permissions "$APK" > candidate-results/permissions.txt
-          grep -q "package: name='com.zerokeyboard.ime.debug' versionCode='104'" candidate-results/badging.txt
+          grep -q "package: name='com.zerokeyboard.ime.debug' versionCode='105'" candidate-results/badging.txt
           ! grep -E 'android.permission.(INTERNET|READ_CONTACTS)' candidate-results/permissions.txt
           sha256sum "$APK" > candidate-results/apk.sha256
           cp "$APK" candidate-results/zero-mature-core-debug-evaluation.apk
@@ -140,11 +140,11 @@ jobs:
           APK="$(find upstream/heliboard/app/build/outputs/apk/release -name '*unsigned.apk' -print -quit)"
           test -f "$APK"
           TOOL="$ANDROID_HOME/build-tools/35.0.0"
-          "$TOOL/zipalign" -P 16 -f 4 "$APK" owner-release/Zero-Keyboard-0.2.2-engine-preview-unsigned.apk
-          "$TOOL/zipalign" -c -P 16 4 owner-release/Zero-Keyboard-0.2.2-engine-preview-unsigned.apk
+          "$TOOL/zipalign" -P 16 -f 4 "$APK" owner-release/Zero-Keyboard-0.2.3-engine-preview-unsigned.apk
+          "$TOOL/zipalign" -c -P 16 4 owner-release/Zero-Keyboard-0.2.3-engine-preview-unsigned.apk
           "$TOOL/aapt" dump badging owner-release/*.apk > owner-release/badging.txt
           "$TOOL/aapt" dump permissions owner-release/*.apk > owner-release/permissions.txt
-          grep -q "package: name='com.zerokeyboard.ime' versionCode='104'" owner-release/badging.txt
+          grep -q "package: name='com.zerokeyboard.ime' versionCode='105'" owner-release/badging.txt
           ! grep -E 'android.permission.(INTERNET|READ_CONTACTS)' owner-release/permissions.txt
           JAR="$(find "$HOME/.gradle/caches/modules-2/files-2.1/com.android.tools.build/apksig" -name 'apksig-8.10.1.jar' -print -quit)"
           test -f "$JAR"
@@ -163,28 +163,28 @@ jobs:
           name: zero-mature-unsigned-test-input
           path: owner-release/
           if-no-files-found: error
-      - name: Retrieve previous 0.2.1 release
+      - name: Retrieve previous 0.2.2 release
         if: github.event.label.name == 'zero-mature-owner-release'
         uses: actions/download-artifact@v4
         with:
-          name: zero-0.2.1-unsigned-test-input
-          run-id: 46142987551
+          name: zero-mature-unsigned-test-input
+          run-id: 46145726737
           github-token: ${{ github.token }}
           path: previous-release
       - name: Verify the previous release payload
         if: github.event.label.name == 'zero-mature-owner-release'
         working-directory: previous-release
         run: |
-          test "$(cat source-commit.txt)" = d304105e96eaa2fd079a8b2a5e94273c73891ea1
+          test "$(cat source-commit.txt)" = 35da25d90a535f4c4455147de606bdbecb7ebb23
           sha256sum -c checksums.sha256
       - name: Sign isolated emulator copies
         if: github.event.label.name == 'zero-mature-owner-release'
         run: |
           keytool -genkeypair -keystore /tmp/zero-ci.p12 -storetype PKCS12 -alias test -keyalg RSA -keysize 2048 -validity 2 -storepass ci-test-only-123 -dname 'CN=Zero CI Test Only'
           TOOL="$ANDROID_HOME/build-tools/35.0.0"
-          "$TOOL/apksigner" sign --ks /tmp/zero-ci.p12 --ks-pass pass:ci-test-only-123 --out /tmp/zero-old.apk previous-release/Zero-Keyboard-0.2.1-engine-preview-unsigned.apk
-          "$TOOL/apksigner" sign --ks /tmp/zero-ci.p12 --ks-pass pass:ci-test-only-123 --out /tmp/zero-new.apk owner-release/Zero-Keyboard-0.2.2-engine-preview-unsigned.apk
-      - name: Actual 0.2.2 release upgrade and fresh launch on Android 13
+          "$TOOL/apksigner" sign --ks /tmp/zero-ci.p12 --ks-pass pass:ci-test-only-123 --out /tmp/zero-old.apk previous-release/Zero-Keyboard-0.2.2-engine-preview-unsigned.apk
+          "$TOOL/apksigner" sign --ks /tmp/zero-ci.p12 --ks-pass pass:ci-test-only-123 --out /tmp/zero-new.apk owner-release/Zero-Keyboard-0.2.3-engine-preview-unsigned.apk
+      - name: Actual 0.2.3 release upgrade and fresh launch on Android 13
         if: github.event.label.name == 'zero-mature-owner-release'
         uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed
         with:
@@ -195,7 +195,7 @@ jobs:
           emulator-boot-timeout: 600
           disable-linux-hw-accel: false
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 4096
-          script: python3 research/rebase/release_launch_probe.py /tmp/zero-old.apk /tmp/zero-new.apk candidate-results/release-runtime 104
+          script: python3 research/rebase/release_launch_probe.py /tmp/zero-old.apk /tmp/zero-new.apk candidate-results/release-runtime 105
       - name: Publish unsigned owner kit after release runtime gate
         if: github.event.label.name == 'zero-mature-owner-release'
         uses: actions/upload-artifact@v4

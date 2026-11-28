@@ -18,3 +18,28 @@ No private screenshot or message content is included in the repository.
 
 ## Evidence status
 Voice source changes committed separately. Tablet compact/default preference patch authored, not compiled or measured. Visual redesign, Arabic geometry, adaptive settings, clipboard images, real glide/voice accuracy and owner-signed release remain open. Compare fresh screenshots against owner references before claiming completion.
+
+## Candidate 105 review
+
+All 15 references were reviewed together. The Zero references show English in
+two host editors, symbols and the legacy voice setup. The Gboard references
+show Arabic letters and symbols, toolbar overflow and seven settings pages
+covering languages, preferences, theme, correction, glide, voice and clipboard,
+plus an emoji settings page.
+
+- The settings reference uses a persistent category column with a selected
+  state. Keep the current settings navigation until the adaptive replacement
+  can exercise the same controls on both phone and tablet.
+- Compare Arabic symbols independently from Arabic letters. The reference
+  exposes page switching and frequent emoji above the symbols; the Zero
+  symbols reference instead keeps the editing toolbar. Verify easy access to
+  both surfaces and keep the host formatting controls outside the IME.
+- The voice settings reference puts simple switches first. Candidate 105
+  moves model selection, CPU threads, silence threshold and imports behind an
+  advanced section. First-run system permission has a separate quick path.
+- The clipboard reference includes configurable suggestions and recent
+  images. Assess text retention and image insertion separately under the Zero
+  privacy rules. Existing owner reference images stay private.
+- Candidate 105 adds adaptive light and dark Zero Glass palettes and a rounded
+  default. These use the existing renderer. Run matched-language geometry and
+  contrast checks before judging the change against a reference.

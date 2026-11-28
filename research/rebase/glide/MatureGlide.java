@@ -88,7 +88,7 @@ public final class MatureGlide implements AutoCloseable {
    int code=key.getCode();if(code>0&&Character.isLetter(code))centers.put(Character.toLowerCase(code),new GeometricRanker.Point((key.getX()+key.getWidth()/2f)/unit,(key.getY()+key.getHeight()/2f)/unit));
   }
   List<GeometricRanker.Point> points=new ArrayList<>(trace);
-  SharedPreferences prefs=host.settings();String personalText=prefs.getBoolean("personal_enabled",true)?prefs.getString(arabic?"personal_ar":"personal_en",""):"";
+  SharedPreferences prefs=host.settings();String personalText=prefs.getBoolean("personal_enabled",false)?prefs.getString(arabic?"personal_ar":"personal_en",""):"";
   boolean imported=prefs.getBoolean("imported_dictionary",true),space=prefs.getBoolean("glide_space",true);
   worker.execute(()->{
    if(token!=generation)return;

@@ -5,7 +5,7 @@ from prepare_candidate import replace
 root=Path(sys.argv[1])
 service=root/"app/src/main/java/com/zerokeyboard/ime/ZeroImeService.java"
 if "VoiceSession voice" not in service.read_text(): raise ValueError("voice adapter required")
-replace(service,"    @Override public void onStartInputView(EditorInfo info,boolean restarting){ cancelVoice(); super.onStartInputView(info,restarting); }","    @Override public void onStartInputView(EditorInfo info,boolean restarting){ cancelVoice(); super.onStartInputView(info,restarting); queueGeometry(); }")
+replace(service,"super.onStartInputView(info,restarting);","super.onStartInputView(info,restarting); queueGeometry();")
 replace(service,"        cancelVoice(); super.onEvent(event);","        cancelVoice(); super.onEvent(event); queueGeometry();")
 replace(service,"    private boolean allowed(){",'''    // Evaluation-only static key geometry. Never reads the editor or records typed input.
     private final android.os.Handler geometryHandler=new android.os.Handler(android.os.Looper.getMainLooper());

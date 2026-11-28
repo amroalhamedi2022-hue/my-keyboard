@@ -9,6 +9,7 @@ import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
 /** Accept only exact catalogued weights. No arbitrary model parsing or network. */
 public final class ModelStore {
  private static final long MAX=220L*1024*1024;
+ private static final Object MODEL_WRITE_LOCK = new Object();
  private final Context context;
  private final File dir;
  public ModelStore(Context c){context=c.getApplicationContext();dir=new File(context.getNoBackupFilesDir(),"voice-models");}
@@ -19,9 +20,11 @@ public final class ModelStore {
   MessageDigest md=MessageDigest.getInstance("SHA-256");
   try(InputStream in=new FileInputStream(file)){byte[] buf=new byte[65536];int n;long total=0;while((n=in.read(buf))!=-1){total+=n;if(total>MAX)throw new IOException("model too large");md.update(buf,0,n);}if(total!=expected)throw new IOException("model size changed");}return hex(md.digest());
  }
- public synchronized ModelCatalog install(Uri uri)throws Exception{
-  try(InputStream in=context.getContentResolver().openInputStream(uri)){
-   if(in==null)throw new IOException("file unavailable");return installStream(in,null);
+ public ModelCatalog install(Uri uri)throws Exception{
+  synchronized (MODEL_WRITE_LOCK) {
+   try(InputStream in=context.getContentResolver().openInputStream(uri)){
+    if(in==null)throw new IOException("file unavailable");return installStream(in,null);
+   }
   }
  }
  private ModelCatalog installStream(InputStream in,ModelCatalog expected)throws Exception{
@@ -41,7 +44,7 @@ public final class ModelStore {
   }finally{stage.delete();}
  }
  public File file(ModelCatalog model){return new File(dir,model.filename);}
- public synchronized boolean installed(ModelCatalog model){File f=file(model);return Files.isRegularFile(f.toPath(),NOFOLLOW_LINKS)&&f.length()==model.bytes;}
+ public boolean installed(ModelCatalog model){File f=file(model);return Files.isRegularFile(f.toPath(),NOFOLLOW_LINKS)&&f.length()==model.bytes;}
  private static final String BUNDLE="zero-voice-models";
  public boolean bundled(ModelCatalog model){
   if(model!=ModelCatalog.TINY)return false;
@@ -50,12 +53,19 @@ public final class ModelStore {
  }
  public boolean available(ModelCatalog model){return installed(model)||bundled(model);}
  /** Called only on the voice worker. The packaged model is checked before atomic installation. */
- public synchronized File verified(ModelCatalog model)throws Exception{
-  File f=file(model);
-  try{if(model.sha256.equals(digest(f,model.bytes)))return f;}catch(IOException ignored){}
-  if(!bundled(model))throw new IOException("model missing or corrupted");
-  try(InputStream in=context.getAssets().open(BUNDLE+"/"+model.filename)){installStream(in,model);}
-  return f;
+ public File verified(ModelCatalog model)throws Exception{
+  synchronized (MODEL_WRITE_LOCK) {
+   File f=file(model);
+   try{if(model.sha256.equals(digest(f,model.bytes)))return f;}catch(IOException ignored){}
+   if(!bundled(model))throw new IOException("model missing or corrupted");
+   try(InputStream in=context.getAssets().open(BUNDLE+"/"+model.filename)){installStream(in,model);}
+   return f;
+  }
  }
- public synchronized boolean delete(ModelCatalog model){File f=file(model);return !Files.exists(f.toPath(),NOFOLLOW_LINKS)||f.delete();}
+ public boolean delete(ModelCatalog model){
+  synchronized (MODEL_WRITE_LOCK) {
+   File f=file(model);
+   return !Files.exists(f.toPath(),NOFOLLOW_LINKS)||f.delete();
+  }
+ }
 }
