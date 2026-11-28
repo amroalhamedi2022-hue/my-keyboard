@@ -94,7 +94,7 @@ public final class VoiceSession {
    System.arraycopy(samples,speech.start(),samples,0,length);
    String result=NativeWhisper.transcribe(file.getAbsolutePath(),samples,length,job.id,options);
    done(job,result,"Ready");
-  }catch(Exception|LinkageError error){done(job,null,"Voice unavailable • check setup");}
+  }catch(Exception|LinkageError error){String recovered=pipeline==null?"":pipeline.completedText();done(job,recovered.isEmpty()?null:recovered,recovered.isEmpty()?"Voice unavailable • check setup":"Ready • partial result after decoder interruption");}
   finally{if(recorder!=null){try{recorder.stop();}catch(RuntimeException ignored){}try{recorder.release();}catch(RuntimeException ignored){}}if(pipeline!=null){if(!pipeline.done())NativeWhisper.cancel(job.id);pipeline.close();}if(backlog!=null)backlog.close();if(tail!=null)tail.close();if(segments!=null)segments.close();if(samples!=null)Arrays.fill(samples,0);if(chunk!=null)Arrays.fill(chunk,(short)0);NativeWhisper.release(job.id);}
  }
  private void enqueueLast(SegmentedDecoder pipeline,AudioSegments.Chunk chunk,Job job)throws Exception{

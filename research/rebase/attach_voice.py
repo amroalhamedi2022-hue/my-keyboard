@@ -38,5 +38,17 @@ path.write_text(text)
 # Make the local voice button visible without depending on an external speech IME.
 toolbar=java/"utils/ToolbarUtils.kt"
 replace(toolbar,'val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {\n    it.name + Separators.KV + false\n}', 'val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {\n    it.name + Separators.KV + (it == VOICE)\n}')
+# Direct access from the mature settings home; does not depend on an editor or microphone button.
+main=app/"src/main/java/helium314/keyboard/settings/screens/MainSettingsScreen.kt"
+replace(main,"        val enabledSubtypes = SubtypeSettings.getEnabledSubtypes(true)", "        val enabledSubtypes = SubtypeSettings.getEnabledSubtypes(true)\n        val zeroContext = LocalContext.current")
+replace(main,"                if (JniUtils.sHaveGestureLib)",'''                Preference(
+                    name = "Zero Voice & Glide",
+                    description = "Offline speech, models and open swipe typing",
+                    onClick = { zeroContext.startActivity(android.content.Intent(zeroContext, com.zerokeyboard.ime.VoiceSetupActivity::class.java)) },
+                    icon = R.drawable.ic_settings_gesture
+                ) { NextScreenIcon() }
+                if (JniUtils.sHaveGestureLib)''')
+replace(app/"src/main/res/values/strings.xml",'<string name="ime_settings">HeliBoard Settings</string>','<string name="ime_settings">Zero Keyboard Settings</string>')
+replace(app/"src/main/res/values/donottranslate.xml",'<string name="english_ime_name" translatable="false">HeliBoard</string>','<string name="english_ime_name" translatable="false">Zero Keyboard</string>')
 with (upstream/"ZERO-PROVENANCE.txt").open("a") as f:f.write("Voice adapter enabled: Zero local JNI library, private model storage, editor-bound recording and preview. Runtime verification pending.\n")
 print("Zero local voice module and service adapter attached.")

@@ -1,0 +1,52 @@
+name: Zero actual offline ASR baseline
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+concurrency:
+  group: zero-asr-baseline
+  cancel-in-progress: false
+jobs:
+  baseline:
+    if: github.event_name != 'pull_request' || (github.event.label.name == 'zero-asr-baseline' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Install synthetic evaluation tools
+        run: sudo apt-get update && sudo apt-get install -y espeak-ng ffmpeg
+      - name: Build pinned Whisper CLI and fetch verified models
+        run: |
+          mkdir -p asr-results /tmp/zero-whisper /tmp/zero-models
+          curl -fLsS --retry 3 https://codeload.github.com/ggml-org/whisper.cpp/tar.gz/a8d002cfd879315632a579e73f0148d06959de36 -o /tmp/whisper.tar.gz
+          echo '7b17da903114ed45d82f48c030e3be6a5a8a279f884b2f733706dbb4e832fb6b  /tmp/whisper.tar.gz' | sha256sum -c -
+          tar xzf /tmp/whisper.tar.gz --strip-components=1 -C /tmp/zero-whisper
+          cmake -S /tmp/zero-whisper -B /tmp/zero-whisper/build -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DWHISPER_BUILD_SERVER=OFF
+          cmake --build /tmp/zero-whisper/build --target whisper-cli -j 2
+          curl -fLsS --retry 3 https://huggingface.co/ggerganov/whisper.cpp/resolve/0b364b566045a405be7225ee1e415a073e04da77/ggml-tiny-q5_1.bin -o /tmp/zero-models/tiny.bin
+          curl -fLsS --retry 3 https://huggingface.co/ggerganov/whisper.cpp/resolve/f281eb45af861ab5e5297d23694b7d46e090c02c/ggml-base-q5_1.bin -o /tmp/zero-models/base.bin
+          echo '818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7  /tmp/zero-models/tiny.bin' | sha256sum -c -
+          echo '422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898  /tmp/zero-models/base.bin' | sha256sum -c -
+      - name: Run actual inference on English Arabic and mixed synthetic speech
+        run: |
+          python3 research/asr/generate_synthetic.py asr-results/corpus
+          CLI=/tmp/zero-whisper/build/bin/whisper-cli
+          test -x "$CLI"
+          for model in tiny base; do
+            HASH="$(sha256sum /tmp/zero-models/$model.bin | cut -d' ' -f1)"
+            python3 research/asr/run_whisper.py --cli "$CLI" --model "/tmp/zero-models/$model.bin" --model-sha256 "$HASH" --manifest asr-results/corpus/manifest.jsonl --output "asr-results/$model-transcripts.jsonl" --language auto --threads 4
+            python3 research/asr/score.py "asr-results/$model-transcripts.jsonl" > "asr-results/$model-metrics.json"
+            cat "asr-results/$model-metrics.json"
+          done
+          git rev-parse HEAD > asr-results/source-commit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zero-asr-synthetic-inference-evidence
+          path: asr-results/
+          if-no-files-found: warn
