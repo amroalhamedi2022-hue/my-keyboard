@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   candidate:
-    if: github.event_name != 'pull_request' || ((github.event.label.name == 'zero-mature-core-candidate' || github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-owner-release') && github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.event_name != 'pull_request' || ((github.event.label.name == 'zero-mature-core-candidate' || github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-runtime-retry' || github.event.label.name == 'zero-mature-owner-release') && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -20,17 +20,21 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/checkout@v4
+        if: github.event.label.name != 'zero-mature-runtime-retry'
         with:
           repository: HeliBorg/HeliBoard
           ref: f8ec91a982835911cc224fa99434c3396d4cd562
           path: upstream/heliboard
           persist-credentials: false
       - uses: actions/setup-java@v4
+        if: github.event.label.name != 'zero-mature-runtime-retry'
         with:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+        if: github.event.label.name != 'zero-mature-runtime-retry'
       - name: Install pinned Android packages
+        if: github.event.label.name != 'zero-mature-runtime-retry'
         shell: bash
         run: |
           SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
@@ -42,15 +46,18 @@ jobs:
           "$MANAGER" --sdk_root="$SDK" --licenses < <(yes) >/dev/null
           "$MANAGER" --sdk_root="$SDK" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.0.13004108' 'cmake;3.22.1'
       - name: Open gesture admission smoke
+        if: github.event.label.name != 'zero-mature-runtime-retry'
         run: |
           javac -encoding UTF-8 -d /tmp/zero-gate research/rebase/glide/GestureGate.java research/rebase/glide/GestureGateSmoke.java
           java -cp /tmp/zero-gate GestureGateSmoke
       - name: Voice interruption recovery regression
+        if: github.event.label.name != 'zero-mature-runtime-retry'
         run: |
           V=app/src/main/java/com/zerokeyboard/ime/voice
           javac -encoding UTF-8 -d /tmp/zero-recovery "$V/AudioSegments.java" "$V/SpeechWindow.java" "$V/SegmentedDecoder.java" research/voice/RecoverySmoke.java
           java -cp /tmp/zero-recovery RecoverySmoke
       - name: Prepare Zero engine source
+        if: github.event.label.name != 'zero-mature-runtime-retry'
         run: |
           python3 research/rebase/audit_baseline.py upstream/heliboard candidate-results
           python3 research/rebase/prepare_candidate.py upstream/heliboard .
@@ -78,11 +85,11 @@ jobs:
           git rev-parse HEAD > candidate-results/zero-source-commit.txt
           cp upstream/heliboard/ZERO-PROVENANCE.txt candidate-results/
       - name: Compile non-distribution candidate
-        if: github.event.label.name != 'zero-mature-owner-release'
+        if: github.event.label.name != 'zero-mature-owner-release' && github.event.label.name != 'zero-mature-runtime-retry'
         working-directory: upstream/heliboard
         run: ./gradlew :app:assembleDebugNoMinify --no-daemon
       - name: Verify candidate APK permissions and identity
-        if: github.event.label.name != 'zero-mature-owner-release'
+        if: github.event.label.name != 'zero-mature-owner-release' && github.event.label.name != 'zero-mature-runtime-retry'
         shell: bash
         run: |
           APK="$(find upstream/heliboard/app/build/outputs/apk/debugNoMinify -name '*.apk' -print -quit)"
@@ -94,8 +101,25 @@ jobs:
           ! grep -E 'android.permission.(INTERNET|READ_CONTACTS)' candidate-results/permissions.txt
           sha256sum "$APK" > candidate-results/apk.sha256
           cp "$APK" candidate-results/zero-mature-core-debug-evaluation.apk
+      - name: Retrieve compiled candidate for runtime retry
+        if: github.event.label.name == 'zero-mature-runtime-retry'
+        uses: actions/download-artifact@v4
+        with:
+          name: zero-mature-core-evaluation-not-release
+          run-id: 46150954018
+          github-token: ${{ github.token }}
+          path: retry-input
+      - name: Verify and stage runtime retry input
+        if: github.event.label.name == 'zero-mature-runtime-retry'
+        run: |
+          test "$(cat retry-input/zero-source-commit.txt)" = efe863c7262950d7b1987f0f007ffb8a0c8653b5
+          read -r expected_checksum _ < retry-input/apk.sha256
+          echo "$expected_checksum  retry-input/zero-mature-core-debug-evaluation.apk" | sha256sum -c -
+          mkdir -p candidate-results
+          mv retry-input/zero-mature-core-debug-evaluation.apk candidate-results/
+          cp retry-input/{badging.txt,permissions.txt,zero-source-commit.txt} candidate-results/
       - name: Download synthetic editor fixture from verified Alpha02 build
-        if: github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate'
+        if: github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-runtime-retry'
         uses: actions/download-artifact@v4
         with:
           name: zero-debug-engineering-apk-not-release
@@ -103,22 +127,26 @@ jobs:
           github-token: ${{ github.token }}
           path: fixture
       - name: Enable KVM for actual touch tests
-        if: github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-owner-release'
+        if: github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-owner-release' || github.event.label.name == 'zero-mature-runtime-retry'
         run: |
           test -e /dev/kvm
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-python@v5
+        if: github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-runtime-retry'
+        with:
+          python-version: '3.12'
       - name: Prepare public microphone replay sample
-        if: github.event.label.name == 'zero-mature-glide-candidate'
+        if: github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-runtime-retry'
         run: |
           mkdir -p /tmp/zero-dictation/generated
           python3 -m venv /tmp/zero-dictation/venv
-          /tmp/zero-dictation/venv/bin/pip install 'grpcio==1.67.1' 'grpcio-tools==1.67.1'
+          /tmp/zero-dictation/venv/bin/pip install --only-binary=:all: 'grpcio==1.67.1' 'grpcio-tools==1.67.1'
           curl -fLsS --retry 3 --max-time 120 https://raw.githubusercontent.com/ggml-org/whisper.cpp/a8d002cfd879315632a579e73f0148d06959de36/samples/jfk.wav -o /tmp/zero-dictation/english.wav
           echo '59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e  /tmp/zero-dictation/english.wav' | sha256sum -c -
       - name: Real mature keyboard touch and microphone smoke
-        if: github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate'
+        if: github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-runtime-retry'
         uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed
         with:
           api-level: 33
@@ -128,15 +156,7 @@ jobs:
           emulator-boot-timeout: 600
           disable-linux-hw-accel: false
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim -grpc 8554
-          script: >-
-            bash -ec 'fixture="$(find fixture -name "*.apk" -print -quit)";
-            if [ -f /tmp/zero-dictation/english.wav ]; then
-              proto_root="$ANDROID_HOME/emulator/lib";
-              /tmp/zero-dictation/venv/bin/python -m grpc_tools.protoc -I "$proto_root" --python_out=/tmp/zero-dictation/generated "$proto_root/emulator_controller.proto";
-              PYTHONPATH=/tmp/zero-dictation/generated /tmp/zero-dictation/venv/bin/python research/rebase/device_probe.py --candidate candidate-results/zero-mature-core-debug-evaluation.apk --fixture "$fixture" --out candidate-results/runtime --english-wav /tmp/zero-dictation/english.wav;
-            else
-              python3 research/rebase/device_probe.py --candidate candidate-results/zero-mature-core-debug-evaluation.apk --fixture "$fixture" --out candidate-results/runtime;
-            fi'
+          script: bash research/rebase/run_device_probe.sh
       - name: Build unsigned owner Release and corresponding source
         if: github.event.label.name == 'zero-mature-owner-release'
         shell: bash
