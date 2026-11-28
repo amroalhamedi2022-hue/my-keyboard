@@ -1,0 +1,34 @@
+# Mature core migration
+The existing Alpha02 branch is preserved. Candidate is generated reproducibly from pinned HeliBoard v3.6 f8ec91a982835911cc224fa99434c3396d4cd562. The candidate uses actual upstream keyboard, settings, clipboard, emoji, layout and editing implementations; no claim of completed runtime integration. The patch script changes application ID and version code and retains the old IME service component via subclass. The debug variant uses upstream .debug suffix intentionally to prevent overwriting the owner release. Release candidate must retain com.zerokeyboard.ime and same owner certificate, with verified upgrade and existing model/preferences intact.
+Privacy: remove contacts permission, disable backup, default incognito, autocorrection off, clipboard history and clipboard suggestions off, prohibit native user/proprietary glide libraries and external voice dispatch. Restrict language selection to English/Arabic and seed both default subtypes. Upstream direct-boot storage, logs outside logger wrapper, stats code and editor policy require further audit. Upstream clipboard is not yet equivalent to Zero session-only privacy policy; not approved for release. No native voice active in this candidate: original Zero Java/C++/EditorPolicy sources copied to staged module, to be wired with permission/model review, existing no-backup models, session cancellation and actual runtime. No open glide engine integrated yet. No deletions of prior Alpha data.
+GPL: preserve full upstream GPLv3 and Apache notices, provide corresponding source of derivative with binary; do not distribute incomplete candidate as a release. Build-only workflow in draft PR, no owner key or user data. Next: baseline build outcome, candidate compile and device tests, separate voice native library and visible UI controls, open glide benchmark and integration, complete license/privacy review, upgrade verification, sign with existing key only when acceptance gates pass.
+
+Run 46137338637: combined mature core + voice + open glide compiled, APK 55,286,025 bytes, package and permission check passed. Actual emulator English taps qwe and delete -> qw passed; bilingual test failed because globe key -227 absent. Real screenshot runtime/final.png and report.json preserved in artifact 15260178712. Root cause candidate: upstream explicit enabled list is empty even when fallback lists both languages; globe visibility checks fallback=false. Fix seeds both required languages in explicit list, persists after upstream upgrade, separates upstream schema code from Zero APK code, pins voice shortcut, enables emoji shortcut. Retest actual two-way language switch. After debug touch gate only, assemble non-minified Release without geometry helper, export unsigned owner signing kit and complete corresponding source. No release signed or voice/glide inference validated yet.
+
+Run 46138548880: combined candidate compiled, passed actual English input, delete, mixed Arabic-English input, switch back to English and password focus. Release task failed due to missing runTests dependency variant, not runtime. Map all custom upstream build types to compatible voice variants (debugNoMinify/runTests -> debug; nouserlib -> release). Release-only retry label verifies prior exact source and report, skips redundant emulator/debug build, assembles unsigned non-debug release. No claim of voice inference/glide accuracy or signing yet.
+
+Owner release run 46139499671 succeeded; unsigned kit 15261257698 downloaded, checksums verified, signed offline with original key and verified via ApkVerifier. Version 102, SHA256 38364ecf84ec845807b0c2413588b598c555a32aa1f051d7dff4375da443a1e0, APK and corresponding source stored in owner Library /Zero Keyboard. Real bilingual tap gate on run 46138548880 passed; owner release itself not installed on emulator. No APK rebuild for following research/settings changes.
+
+## Startup fix on the ongoing core
+
+The integration keeps the post-0.2.0 voice setup and interrupted-decoder
+changes. Application and service labels again reference a resource. The welcome
+screen resolves the app label through the package manager, including if a
+downstream build uses a literal label. The next engineering version is
+0.2.2-engine-preview (104) so it can update a device running 0.2.1 (103).
+
+The unsigned owner Release job rebuilds from this branch and checks the actual
+release payload on Android 13. It exercises upgrade from the isolated 0.2.1
+release and fresh installation, wizard completion, and cold and warm settings
+launches. It retains the emulator evidence on failure and only makes the owner
+signing kit available after the runtime gate. The separate debug touch check
+continues to cover the synthetic editor and the bilingual input smoke.
+
+The first 104 release gate opened the welcome screen following the update and
+then recorded an unexplained SIGKILL for the app process. Source inspection
+found that the upstream system broadcast receiver kills its entire process
+whenever the keyboard is inactive. A delayed package replacement broadcast can
+therefore kill a foreground welcome screen. Zero removes this process
+termination and keeps normal package, boot and locale handling in a
+non-exported receiver. The corrected Release uses the same
+installation and upgrade gate.

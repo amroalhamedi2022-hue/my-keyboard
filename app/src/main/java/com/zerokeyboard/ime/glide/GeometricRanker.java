@@ -1,5 +1,6 @@
 package com.zerokeyboard.ime.glide;
 import java.util.*;
+import java.util.function.BooleanSupplier;
 /** Experimental IME geometric ranker. Coordinates use consistent keyboard-width units. */
 public final class GeometricRanker {
  private static final int SAMPLES=32;
@@ -47,29 +48,36 @@ public final class GeometricRanker {
    if(other==null||Double.doubleToLongBits(point.x)!=Double.doubleToLongBits(other.x)||Double.doubleToLongBits(point.y)!=Double.doubleToLongBits(other.y))return false;
   }return true;
  }
- private void prepare(Map<Integer,Point> keys,Collection<String> words){
+ private boolean prepare(Map<Integer,Point> keys,Collection<String> words,BooleanSupplier cancelled){
   List<String> wordList=new ArrayList<>(words);
-  if(wordList.equals(cachedWords)&&sameKeys(keys,cachedKeys))return;
+  if(wordList.equals(cachedWords)&&sameKeys(keys,cachedKeys))return true;
   Map<Integer,Point> keyCopy=new HashMap<>(keys);List<Template> templates=new ArrayList<>();
   int index=0;for(String word:wordList){int position=index++;
+   if(cancelled.getAsBoolean())return false;
    if(word.isEmpty())continue;List<Point> raw=new ArrayList<>();
    for(int i=0;i<word.length();){int cp=word.codePointAt(i);i+=Character.charCount(cp);Point point=key(keyCopy,cp);if(point==null){raw.clear();break;}raw.add(point);}
    if(raw.size()>=2&&length(raw)>0)templates.add(new Template(word,raw,0.12*Math.log1p(position)/Math.log1p(Math.max(1,wordList.size()))));
   }
   cachedKeys=keyCopy;cachedWords=wordList;cachedTemplates=templates;
+  return true;
  }
- public synchronized List<Candidate> rank(List<Point> trace,Map<Integer,Point> keys,Collection<String> words,int topK){
-  if(trace.size()<2||topK<1||length(trace)==0)return Collections.emptyList();
-  prepare(keys,words);List<Point> actual=sample(trace);int limit=Math.min(topK,cachedTemplates.size());if(limit==0)return Collections.emptyList();
+ public List<Candidate> rank(List<Point> trace,Map<Integer,Point> keys,Collection<String> words,int topK){
+  return rank(trace,keys,words,topK,()->false);
+ }
+ public synchronized List<Candidate> rank(List<Point> trace,Map<Integer,Point> keys,Collection<String> words,int topK,BooleanSupplier cancelled){
+  if(trace.size()<2||topK<1||length(trace)==0||cancelled.getAsBoolean()||!prepare(keys,words,cancelled))return Collections.emptyList();
+  List<Point> actual=sample(trace);int limit=Math.min(topK,cachedTemplates.size());if(limit==0)return Collections.emptyList();
   Comparator<Candidate> order=Comparator.comparingDouble((Candidate c)->c.score).thenComparing(c->c.word);
   PriorityQueue<Candidate> best=new PriorityQueue<>(limit,order.reversed());double traceLength=length(trace);
   for(Template template:cachedTemplates){
+   if(cancelled.getAsBoolean())return Collections.emptyList();
    double lower=template.prior+0.4*(d(trace.get(0),template.first)+d(trace.get(trace.size()-1),template.last))+0.08*Math.abs(traceLength-template.length);
    if(best.size()==limit&&lower>best.peek().score)continue;
    double error=0;for(int i=0;i<SAMPLES;i++)error+=d(actual.get(i),template.sampled.get(i));
    Candidate candidate=new Candidate(template.word,error/SAMPLES+lower);
    if(best.size()<limit)best.add(candidate);else if(order.compare(candidate,best.peek())<0){best.poll();best.add(candidate);}
   }
+  if(cancelled.getAsBoolean())return Collections.emptyList();
   List<Candidate> ranked=new ArrayList<>(best);ranked.sort(order);return ranked;
  }
 }

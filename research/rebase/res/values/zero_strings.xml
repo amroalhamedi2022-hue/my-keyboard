@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="zero_voice_and_glide">Zero Voice &amp; Glide</string>
+    <string name="zero_voice_and_glide_description">Offline dictation and swipe typing</string>
+    <string name="zero_try_keyboard">Try the keyboard</string>
+    <string name="theme_name_zero_glass_light">Zero Glass Light</string>
+    <string name="theme_name_zero_glass_dark">Zero Glass Dark</string>
+    <string name="zero_voice_permission_granted">Microphone allowed. Tap the mic again to dictate.</string>
+    <string name="zero_voice_permission_denied">Microphone access denied. You can enable it from Zero Voice &amp; Glide.</string>
+    <string name="zero_voice_engine_unavailable">Offline voice is unavailable in this build.</string>
+    <string name="zero_voice_private">Voice is unavailable in this field or in incognito mode.</string>
+    <string name="zero_voice_disabled">Offline voice is off. To enable it, open Zero Voice &amp; Glide in settings.</string>
+    <string name="zero_voice_model_missing">The offline voice model is unavailable. Check Zero Voice &amp; Glide in settings.</string>
+    <string name="zero_voice_model_fallback">Using the included Tiny model because Base is missing.</string>
+    <string name="zero_delete_saved_clips">Delete saved keyboard clips</string>
+    <string name="zero_delete_saved_clips_message">Delete saved and pinned items from Zero Keyboard’s clipboard history?</string>
+</resources>

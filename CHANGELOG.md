@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.2.3-engine-preview (105) — 2026-11-28
+
+- Added a system permission flow for the microphone and a verified bundled
+  multilingual Tiny model. Voice controls are inside the keyboard, with a
+  recording indicator, pause, stop, review and discard.
+- Added adaptive settings navigation, a tablet typing field, and Zero Glass
+  light and dark themes. The phone keeps the single-pane settings view.
+- Hardened private editor behavior, added deletion of all saved clipboard
+  entries including pins, and cancelled obsolete glide ranking.
+- Android 13 evaluation passed nine checks, including permission handling,
+  Arabic and English touch input, dictation discard, English recording
+  replay through the emulator microphone, editor insertion and hidden
+  microphone controls in a password field.
+- Release upgrade from 0.2.2 and fresh setup passed all fifteen launch checks
+  with isolated CI signatures. The owner-signed APK has identical package
+  payload entries and the same v3 signing certificate as 0.2.2.
+- This preview still has a dictation word-boundary issue beside existing
+  text. English replay-to-observed-insertion took 106.91 seconds on the
+  emulator. Palestinian accuracy and physical Pad 5 performance remain open.
+
+| Release identifier | Value |
+|---|---|
+| Application ID | `com.zerokeyboard.ime` |
+| Production source | `a3c8160fd1184e790426dd73f04ca3dfa0010c31` |
+| Owner certificate SHA-256 | `a0c2454c1ec3b80e0e20def4c94d9e31e8dc52368a589cf7299e97c6ed087afe` |
+| Signed APK SHA-256 | `454e0c05e8e71e4df78d505eaa948f4c9f36b65d073e7f9cbe3a5ca91cd1f4e5` |
+| Corresponding source SHA-256 | `e55df05707f7f17e6141d55b54ae61f35c602e7a2a80d68edb5d6b0183c22a54` |
+
+- [Android microphone and editor results](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46179051428)
+- [Release upgrade and fresh-install results](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46179952395)
+
 ## Unreleased — Batch 5
 
 - Added Android 11+ provider-rendered Inline Autofill with stale-response isolation and an independent setting.
