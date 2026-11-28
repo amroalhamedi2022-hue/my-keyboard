@@ -61,7 +61,7 @@ feature. Previous emulator results apply to their exact source and payload.
 
 - Source generation from the pinned HeliBoard commit, voice and glide adapters,
   debug geometry injection, generated manifest preflight and whitespace check passed.
-- Twelve Python tests, 17 gesture admission checks and 100 interrupted-decoder
+- Fifteen Python tests, 17 gesture admission checks and 100 interrupted-decoder
   sessions passed on the host. Java editor policy and voice sources compiled
   against SDK 35. The bundled Tiny checksum and the prior APK's owner v3 signature
   were independently checked.
@@ -74,11 +74,18 @@ feature. Previous emulator results apply to their exact source and payload.
   The screenshot shows a microphone icon. UiAutomator returned the fixture
   window alone, so the probe timed out locating the mic. Debug-only geometry
   now reads actual microphone and panel control centers and exports recording
-  state without capturing editor text or audio. The permission and insertion
-  results still require the new run.
+  state without capturing editor text or audio. [The runtime retry](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46175360735)
+  reached Android's system microphone permission prompt. The probe ignored XML
+  leaf buttons because their truth value was false. A regression test covers
+  that case. Capture and insertion still require a successful run.
 - [Tiny voice and native regression results](../ASR_BENCHMARK.md)
 - The [next two emulator runs](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46150954018)
   built the candidate. The emulator action split an inline multi-line script before
   the device probe started. The revised workflow uses a checked-in shell script,
   pinned Python wheels and a runtime retry path that verifies the previously
   compiled APK's source and hash before reuse.
+- [Adaptive settings candidate](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46175857274)
+  compiled. The first settings check saw the onboarding wizard because it had
+  opened settings before selecting the IME. The retry opens settings after
+  selection and preserves keyboard and microphone evidence even if the settings
+  check fails.

@@ -1,5 +1,5 @@
 import unittest
-from score import score
+from score import normalize_arabic_text, score
 class ScoreTests(unittest.TestCase):
     def test_exact_mixed(self):
         r=score([{"id":"1","reference":"بدي exam","hypothesis":"بدي exam"}])
@@ -32,4 +32,15 @@ class ScoreTests(unittest.TestCase):
     def test_duplicate(self):
         row={"id":"1","reference":"a","hypothesis":"a"}
         with self.assertRaises(ValueError): score([row,row])
+
+    def test_orthography_mode_keeps_strict_results_available(self):
+        row = {"id": "1", "reference": "أَهْلاً، Exam ١٢!", "hypothesis": "اهلا exam 12"}
+        self.assertEqual(score([row])["wer"], 1)
+        normalized = score([row], normalize_arabic_text)
+        self.assertEqual(normalized["wer"], 0)
+        self.assertEqual(normalized["mixed_english_token_error_rate"], 0)
+
+    def test_dialect_replacement_still_counts_as_an_error(self):
+        row = {"id": "1", "reference": "بدي أكتب", "hypothesis": "أريد أكتب"}
+        self.assertEqual(score([row], normalize_arabic_text)["wer"], 0.5)
 if __name__=="__main__": unittest.main()

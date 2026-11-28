@@ -4,7 +4,7 @@ set -euo pipefail
 fixture=$(find fixture -name '*.apk' -print -quit)
 test -f "$fixture"
 args=(
-    --candidate candidate-results/zero-mature-core-debug-evaluation.apk
+    --candidate "${ZERO_CANDIDATE_APK:-candidate-results/zero-mature-core-debug-evaluation.apk}"
     --fixture "$fixture"
     --out candidate-results/runtime
 )

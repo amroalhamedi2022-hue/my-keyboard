@@ -167,12 +167,20 @@ def main():
     a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True);result={"checks":[]}
     try:
         adb("install","-r",str(a.fixture));adb("install","-r",str(a.candidate))
-        adb("shell","am","start","-W","-n",SETTINGS)
         wait(lambda:IME in adb("shell","ime","list","-a","-s").decode())
         adb("shell","ime","enable",IME);adb("shell","ime","set",IME)
         adb("shell","settings","put","secure","show_ime_with_hard_keyboard","1")
+        settings_error = None
         if a.adaptive_settings:
-            adaptive_settings_smoke(a.out, result["checks"])
+            try:
+                adaptive_settings_smoke(a.out, result["checks"])
+            except Exception as error:
+                settings_error = error
+                result["settings_error"] = str(error)
+                try:
+                    snapshot(a.out, "settings-failure")
+                except (OSError, subprocess.SubprocessError):
+                    pass
         adb("shell","am","start","-W","-n",FIXTURE)
         snapshot(a.out,"fixture-before-focus")
         focus("zero_probe_normal")
@@ -200,6 +208,8 @@ def main():
         focus("zero_probe_password");snapshot(a.out,"password")
         wait(lambda: key(MICROPHONE) is None)
         result["checks"].append("voice toolbar action hidden in password field")
+        if settings_error is not None:
+            raise settings_error
     except Exception as e:
         result["error"]=str(e)
         if isinstance(e,subprocess.CalledProcessError):result["stderr"]=(e.stderr or b"").decode(errors="replace")[-2000:]

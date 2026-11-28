@@ -1,6 +1,6 @@
 """Score paired UTF-8 JSONL transcripts. No model inference or audio access.
-Fields: id, reference, hypothesis. Optional: dialect, condition. Strict text; no
-Arabic folding or case folding. WER uses whitespace tokens; CER includes spaces.
+Fields: id, reference, hypothesis. Optional: dialect, condition. Default scoring
+is strict. WER uses whitespace tokens and CER includes spaces.
 """
 import argparse
 import json
@@ -21,6 +21,23 @@ def edit(a, b):
 
 def clean(s):
     return " ".join(unicodedata.normalize("NFC", s).split())
+
+def normalize_arabic_text(text):
+    """Ignore typography and common orthographic variants without changing words."""
+    text = unicodedata.normalize("NFC", text).casefold()
+    result = []
+    for char in text:
+        category = unicodedata.category(char)
+        if char == "ـ" or (category.startswith("M") and "ARABIC" in unicodedata.name(char, "")):
+            continue
+        if char in "أإآٱ":
+            char = "ا"
+        elif category == "Nd":
+            char = str(unicodedata.decimal(char))
+        elif category.startswith("P"):
+            char = " "
+        result.append(char)
+    return clean("".join(result))
 
 def script(c):
     name = unicodedata.name(c, "")
@@ -55,7 +72,7 @@ def runtime_summary(rows):
     }
 
 
-def score(rows):
+def score(rows, normalize=clean):
     rows = list(rows)
     counts = defaultdict(int)
     seen = set()
@@ -63,7 +80,7 @@ def score(rows):
         if row["id"] in seen:
             raise ValueError("duplicate id")
         seen.add(row["id"])
-        a, b = clean(row["reference"]), clean(row["hypothesis"])
+        a, b = normalize(row["reference"]), normalize(row["hypothesis"])
         counts["utterances"] += 1
         counts["word_errors"] += edit(a.split(), b.split())
         counts["reference_words"] += len(a.split())
@@ -91,6 +108,8 @@ def score(rows):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("jsonl")
+    ap.add_argument("--arabic-normalized", action="store_true",
+                    help="also available as an independent typography-insensitive scoring mode")
     args = ap.parse_args()
     with open(args.jsonl, encoding="utf-8") as f:
         rows = [json.loads(line) for line in f if line.strip()]
@@ -99,7 +118,13 @@ def main():
     groups = defaultdict(list)
     for row in rows:
         groups[(row.get("dialect","unknown"),row.get("condition","unknown"))].append(row)
-    print(json.dumps({"overall":score(rows),"groups":[{"dialect":k[0],"condition":k[1],"metrics":score(v)} for k,v in sorted(groups.items())]}, ensure_ascii=False,indent=2))
+    normalize = normalize_arabic_text if args.arabic_normalized else clean
+    report = {"overall": score(rows, normalize),
+              "groups": [{"dialect": k[0], "condition": k[1], "metrics": score(v, normalize)}
+                         for k, v in sorted(groups.items())]}
+    if args.arabic_normalized:
+        report["normalization"] = "arabic-typography-v1"
+    print(json.dumps(report, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
     main()

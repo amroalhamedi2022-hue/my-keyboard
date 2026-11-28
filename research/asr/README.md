@@ -15,3 +15,9 @@ Strict WER and CER retain their original scoring. Timing includes model load
 and process startup. Aggregate RTF divides the total elapsed time by the total
 audio duration of all timed clips. Keep the same clips, thread count and CPU
 conditions for comparisons.
+
+Run `score.py --arabic-normalized` for a separate typography-insensitive pass.
+It folds Alef forms and digits, removes Arabic diacritics and tatweel, uses
+case-folding, and replaces punctuation with spaces. Keep the strict score for
+comparison with earlier work. Arabic dialect word substitutions and spelling
+out an English word in a different script still count as errors.

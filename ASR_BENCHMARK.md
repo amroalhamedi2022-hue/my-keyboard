@@ -73,3 +73,41 @@ expected English phrase and rejected a second decode after session cancellation.
 Reproduce with `research/asr/NativeInferenceSmoke.java`, host-built
 `libzero_whisper.so`, the pinned Tiny model and `samples/jfk.wav`.
 This test excludes Android microphone capture and editor insertion.
+
+### Candidate tuned for Egyptian Arabic and code switching
+
+Measured Small Egyptian ACFT Q5_0 with four CPU threads and forced Arabic.
+The 175,209,680-byte asset matched SHA-256
+`1b43329c3a6059da9bfd4643bb64d96688f71589c9a9eca199c695e5611928db` from
+the [model repository](https://huggingface.co/AshrafMMahdy/futo-egyptian-arabic-models/tree/0b4a13bc110d51207d971178c9bb054475cb3c62).
+Tiny used auto language on the additional samples, matching the app default.
+
+| Sample | Model and mode | Strict WER | Typography-normalized WER | Cold p50 | Aggregate RTF |
+|---|---|---:|---:|---:|---:|
+| 16 human Palestinian clips | Tiny auto | 92.0% | 94.0% | 1.58 s | 0.31 |
+| 16 human Palestinian clips | Tiny forced Arabic | 84.8% | 82.4% | 1.02 s | 0.21 |
+| 16 human Palestinian clips | Egyptian Small forced Arabic | 71.2% | 63.6% | 5.55 s | 0.93 |
+| 12 human read Arabic clips | Tiny auto | 64.8% | 55.7% | 1.53 s | 0.19 |
+| 12 human read Arabic clips | Egyptian Small forced Arabic | 40.0% | 25.7% | 5.72 s | 0.70 |
+| 12 human read Arabic clips | Unmodified Small auto | 42.4% | 28.7% | 9.56 s | 1.16 |
+| 12 synthetic Egyptian–English clips | Tiny auto | 79.1% | 75.5% | 1.55 s | 0.25 |
+| 12 synthetic Egyptian–English clips | Egyptian Small forced Arabic | 40.5% | 31.0% | 5.22 s | 0.83 |
+| 12 synthetic Egyptian–English clips | Unmodified Small auto | 56.2% | 49.0% | 9.41 s | 1.48 |
+
+The Egyptian candidate helped on synthetic code switching and read Arabic.
+On the Palestinian clips its strict WER was higher than the prior unmodified
+Small Q5_1 result (57.6%). Its cold decode time is also materially higher than
+Tiny on this host. The app candidate still bundles Tiny. Evaluation of Android
+latency and a human mixed-language corpus remains open.
+
+For read Arabic, selected the first qualifying 3–12 second entries from the
+[FLEURS Arabic test split](https://huggingface.co/datasets/google/fleurs/tree/4683b04/data/ar_eg).
+Zero-based TSV rows: 2, 3, 4, 5, 8, 9, 10, 13, 14, 19, 20, 21. For mixed
+speech, selected the first 12 CC BY 4.0 rows containing both scripts among the
+first 40 test rows of the [synthetic corpus](https://huggingface.co/datasets/abdo1819/arabic-english-code-switching-synthetic-asr).
+Zero-based rows: 3, 5, 6, 10, 16, 20, 24, 26, 27, 28, 29, 31.
+
+The typography-normalized score is reported separately. It folds common Alef
+variants and digit forms, case-folds case-sensitive text, removes Arabic
+diacritics and tatweel, and treats punctuation as whitespace. It preserves dialect
+choices and script. Use `python3 research/asr/score.py --arabic-normalized FILE`.

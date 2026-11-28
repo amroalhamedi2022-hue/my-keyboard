@@ -6,6 +6,7 @@ HeliBoard source with the Zero voice and glide adapters.
 
 - [Mature core build and migration](docs/MATURE_CORE_MIGRATION.md)
 - [Requirements](REQUIREMENTS.md) and [implementation tracker](IMPLEMENTATION_TRACKER.md)
+- [Verified results and completion matrix](docs/COMPLETION_MATRIX.md)
 - [Audio benchmark](ASR_BENCHMARK.md) and [glide benchmark](GLIDE_BENCHMARK.md)
 - [Release and evaluation workflow](.github/workflows/mature-core-candidate.yml)
 
