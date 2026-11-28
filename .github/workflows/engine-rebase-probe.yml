@@ -1,0 +1,67 @@
+name: Mature IME baseline evaluation
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: zero-rebase-probe
+  cancel-in-progress: false
+jobs:
+  heliboard:
+    if: github.event_name != 'pull_request' || (github.event.label.name == 'zero-engine-rebase-probe' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: HeliBorg/HeliBoard
+          ref: f8ec91a982835911cc224fa99434c3396d4cd562
+          path: upstream/heliboard
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install pinned Android packages
+        shell: bash
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$MANAGER" ]; then MANAGER="$(find "$SDK/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"; fi
+          test -x "$MANAGER"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          "$MANAGER" --sdk_root="$SDK" --licenses < <(yes) >/dev/null
+          "$MANAGER" --sdk_root="$SDK" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.0.13004108'
+      - name: Audit baseline before compiling
+        run: python3 research/rebase/audit_baseline.py upstream/heliboard rebase-results
+      - name: Compile upstream baseline without modifying current Zero app
+        working-directory: upstream/heliboard
+        run: ./gradlew :app:assembleDebugNoMinify --no-daemon
+      - name: Check APK identity and permission report
+        shell: bash
+        run: |
+          APK="$(find upstream/heliboard/app/build/outputs/apk/debugNoMinify -name '*.apk' -print -quit)"
+          test -f "$APK"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$AAPT" dump badging "$APK" > rebase-results/badging.txt
+          "$AAPT" dump permissions "$APK" > rebase-results/permissions.txt
+          ! grep -q android.permission.INTERNET rebase-results/permissions.txt
+          sha256sum "$APK" > rebase-results/apk.sha256
+          cp "$APK" rebase-results/upstream-baseline-debug.apk
+          cp upstream/heliboard/LICENSE rebase-results/LICENSE
+      - name: Preserve baseline evidence (NOT a Zero release)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: heliboard-baseline-evaluation-not-release
+          path: rebase-results/
+          if-no-files-found: warn
