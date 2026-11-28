@@ -11,3 +11,5 @@ Voice runner is ready for actual local model experiments, but no independent spe
 Batch 3: build native + Android, test actual recording, local inference and input insertion on Android 13; benchmark Tiny/Base with consented held-out mixed speech; implement abortable/warm native model sessions, VAD and live partials; audit full native dependency and licenses. Continue Glide dictionary/index and Autofill independently.
 
 Batch 04: test adaptive profiles and split glide on physical tablet, validate editor actions and selection callbacks, verify native abort and voice review on device. Continue licensed production lexicon, real bilingual ASR benchmark, warm context lifecycle, streaming, Autofill.
+
+Work handoff: resume existing Android 13 emulator, verify get-state=device and sys.boot_completed=1. If available, first test the existing 8.9 MB debug artifact without rebuilding. For the new automated probe, reuse next deliberate debug build and run docs/ANDROID_RUNTIME_PROBE.md. Preserve real logs/results. Do not claim runtime success until observed.

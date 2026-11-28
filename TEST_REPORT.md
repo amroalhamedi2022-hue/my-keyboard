@@ -28,3 +28,6 @@ Batch 3 local catalog smoke: javac and java -ea executed successfully, 7 asserti
 Batch 04: pinned upstream header read and abort_callback fields verified. LayoutSmoke.java authored; execution evidence will be appended separately. No Android/JNI tests claimed.
 
 Batch 04 local execution: javac 21.0.12.1 -encoding UTF-8 compiled LayoutProfile.java and LayoutSmoke.java. java -ea -cp out LayoutSmoke returned PASS: 9 layout assertions. Git hash-object exactly matched remote LayoutProfile.java c7330edc1fc18c78e9bff6f75c8c96858c269f58 and LayoutSmoke.java f41753d0bbc6125a9ab583ede4d30914a6ef308a. Covers split fallback, wide split geometry, left/right inset, clamped height, Arabic-Indic conversion and number row. No device layout or Android/JNI runtime claims.
+
+## Work handoff / runtime probe
+Current HEAD read-back 198a23db; prior milestone report above confirms build/lint/unit evidence from Work. Owner screenshot indicates emulator boot/ADB progress but no confirmed install or completed runtime test. Current chat environment has no adb or Android SDK/Gradle commands; remote Git DNS fails. Added debug-only fixture and ADB runner, not yet built or run against Android. Helper unit tests authored; execution not claimed here. See docs/ANDROID_RUNTIME_PROBE.md.
