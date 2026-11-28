@@ -95,3 +95,14 @@ feature. Previous emulator results apply to their exact source and payload.
   screenshot showed that the floating voice controls covered part of the host
   editor. The Discard check timed out. Voice controls now mount inside the
   keyboard view and the probe asserts their position before testing Discard.
+- [The inline voice build](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46177344819)
+  showed the keyboard-local panel and Android's microphone indicator together.
+  Its geometry evidence exposed an overlap between the probe's numeric Discard
+  marker and the engine's Symbols key code. The probe addresses controls by
+  name in new builds and disambiguates the pinned binary for runtime retries.
+- [The corrected runtime replay](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46178252462)
+  passed Discard, with the editor's text intact. The second recording reached
+  local processing and exceeded the insertion timeout. The CI logs show that
+  the artifact used the native CMake Debug variant. The next evaluation keeps
+  the geometry probe and links the native Release variant for representative
+  inference timing. Actual text insertion remains unverified.

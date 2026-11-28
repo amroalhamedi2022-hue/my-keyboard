@@ -51,6 +51,9 @@ replace(service,"    private boolean allowed(){",'''    // Evaluation-only stati
                     if (evaluationRecording) {
                         result.put(new org.json.JSONObject().put("control", "recording"));
                     }
+                    if (processing) {
+                        result.put(new org.json.JSONObject().put("control", "processing"));
+                    }
                 }
             }
             java.io.File file=new java.io.File(getApplicationContext().getFilesDir(),"zero-eval-geometry.json");

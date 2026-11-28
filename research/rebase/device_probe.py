@@ -160,6 +160,9 @@ def transcription_smoke(out, checks, wav_path, port):
     wait(lambda: key(RECORDING), seconds=90)
     started = time.monotonic()
     replay_wav(wav_path, port)
+    snapshot(out, "voice-after-replay")
+    print("Audio replay finished; visible voice state:",
+          "processing" if key("processing") else "recording" if key(RECORDING) else "idle", flush=True)
     expected = "what your country can do for you"
 
     def transcript():
@@ -167,7 +170,7 @@ def transcription_smoke(out, checks, wav_path, port):
         text = "" if node is None else node.get("text", "").casefold()
         return text if expected in " ".join(re.findall(r"[a-z]+", text)) else None
 
-    inserted = wait(transcript, seconds=90)
+    inserted = wait(transcript, seconds=120)
     (out / "english-dictation.json").write_text(json.dumps({
         "editor_text": inserted,
         "replay_to_observed_insertion_seconds": round(time.monotonic() - started, 3),
