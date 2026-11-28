@@ -1,4 +1,14 @@
 # Changelog
+
+## Unreleased — Batch 5
+
+- Added Android 11+ provider-rendered Inline Autofill with stale-response isolation and an independent setting.
+- Added bilingual setup resources, a provisional launcher icon and explicit backup/transfer exclusion.
+- Added optional silence endpointing and trimming for local dictation, including deterministic unit tests.
+- Hardened model installation with exact byte sizes, no-follow verification, synchronized mutation, stale-stage cleanup and atomic-move fallback.
+- Cached glide templates by vocabulary and exact layout geometry, and added Arabic alef geometry normalization.
+- Pinned the whisper.cpp source archive by URL and SHA-256 and packaged its MIT notice.
+- Added a checksum-verified Gradle wrapper and reached a clean build, unit-test and lint milestone.
 ## 0.1.0-dev (unreleased)
 Initial repository, requirement register, manual CI configuration, Android IME scaffold, Arabic/English tap layouts and setup flow. Not built or device verified.
 

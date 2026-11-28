@@ -6,6 +6,7 @@ import android.widget.LinearLayout;
 import com.zerokeyboard.ime.glide.GeometricRanker.Point;
 import java.util.*;
 /** Preserves native button clicks until a qualifying letter-to-letter drag intercepts them. */
+@android.annotation.SuppressLint("ViewConstructor")
 final class GlideSurface extends LinearLayout {
  interface Listener {void onGlide(List<Point> trace,Map<Integer,Point> centers);}
  private final Listener listener;
@@ -62,11 +63,12 @@ final class GlideSurface extends LinearLayout {
     int i=e.findPointerIndex(pointer);if(i<0){reset();return true;}
     for(int h=0;h<e.getHistorySize();h++)add(e.getHistoricalX(i,h),e.getHistoricalY(i,h));add(e.getX(i),e.getY(i));break;
    case MotionEvent.ACTION_UP:
-    add(e.getX(),e.getY());List<Point> copy=new ArrayList<>(points);Map<Integer,Point> keys=new HashMap<>(centers);boolean valid=hit(e.getX(),e.getY())!=null;reset();if(valid)listener.onGlide(copy,keys);break;
+    add(e.getX(),e.getY());List<Point> copy=new ArrayList<>(points);Map<Integer,Point> keys=new HashMap<>(centers);boolean valid=hit(e.getX(),e.getY())!=null;reset();if(valid){performClick();listener.onGlide(copy,keys);}break;
    case MotionEvent.ACTION_CANCEL: case MotionEvent.ACTION_POINTER_DOWN: reset();break;
    default:break;
   }return true;
  }
+ @Override public boolean performClick(){super.performClick();return true;}
  @Override protected void dispatchDraw(Canvas canvas){super.dispatchDraw(canvas);if(dragging&&showTrail)canvas.drawPath(path,paint);}
  @Override protected void onDetachedFromWindow(){reset();super.onDetachedFromWindow();}
 }

@@ -8,3 +8,9 @@ local.properties
 *.apk
 *.aab
 .idea/
+**/.cxx/
+__pycache__/
+research/private/
+*.wav
+*.flac
+*.onnx

@@ -4,3 +4,5 @@ No actual model run, no WER/CER results. Added research/asr/score.py for strict 
 Batch 2: CPU whisper-cli runner for verified local model file, private consented WAV manifest, JSON transcription output, per-clip elapsed time and cold-process RTF; 4 synthetic adapter tests pass. No actual whisper executable/model/audio provided or executed. Run same held-out samples for auto/ar/en and tiny/base quantized; do not conflate single-clip language selection with intra-sentence code switching. See research/asr/README.md.
 
 Batch 3: native whisper.cpp CPU backend and two exact-hash multilingual candidates (Tiny Q5 32.2 MB, Base Q5 59.7 MB) integrated in source. No actual inference or accuracy/latency measurement. See docs/VOICE_INTEGRATION.md.
+
+Batch 5 adds an optional low-cost energy endpoint detector. It rejects isolated transient frames, trims leading/trailing silence, and can stop after 1.2 seconds of detected silence. This is deterministic signal processing, not a trained VAD, and sustained noise may be treated as speech. Its host unit tests do not establish ASR accuracy.

@@ -15,4 +15,12 @@ public class GlideRankerTest {
   assertEquals("سلام",new GeometricRanker().rank(Arrays.asList(keys.get((int)'س'),keys.get((int)'ل'),keys.get((int)'ا'),keys.get((int)'م')),keys,Arrays.asList("مال","سلام"),2).get(0).word);
  }
  @Test public void rejectsEmptyTrace(){assertTrue(new GeometricRanker().rank(Collections.emptyList(),Collections.emptyMap(),Collections.emptyList(),3).isEmpty());}
+ @Test public void normalizesAlefAndInvalidatesGeometryCache(){
+  GeometricRanker ranker=new GeometricRanker();Map<Integer,GeometricRanker.Point> keys=new HashMap<>();
+  keys.put((int)'ا',new GeometricRanker.Point(0,0));keys.put((int)'ن',new GeometricRanker.Point(1,0));
+  List<String> words=Arrays.asList("أن");List<GeometricRanker.Point> trace=Arrays.asList(keys.get((int)'ا'),keys.get((int)'ن'));
+  assertEquals("أن",ranker.rank(trace,keys,words,1).get(0).word);
+  keys.put((int)'ن',new GeometricRanker.Point(3,0));trace=Arrays.asList(keys.get((int)'ا'),keys.get((int)'ن'));
+  assertEquals(0.0,ranker.rank(trace,keys,words,1).get(0).score,0.0001);
+ }
 }

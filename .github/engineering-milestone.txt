@@ -1,1 +1,1 @@
-2026-11-27 milestone 01: first native IME and experimental glide integration; compile/lint/unit tests justified. Change this marker only for deliberate engineering builds.
+2026-11-28 milestone 02: Inline Autofill, hardened model import, silence endpointing, cached glide geometry and clean local build/lint/unit tests. Change this marker only for deliberate engineering builds.

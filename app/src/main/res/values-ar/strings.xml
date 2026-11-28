@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">لوحة مفاتيح زيرو</string>
+    <string name="english">English</string>
+    <string name="arabic">العربية</string>
+    <string name="setup_info">نسخة هندسية أولية • العربية والإنجليزية\nالكتابة اليدوية تعمل بلا إنترنت. السحب تجريبي ويستخدم قائمة كلمات صغيرة. الإملاء المحلي التجريبي يحتاج نموذجًا مستوردًا موثوقًا وإذن الميكروفون.</string>
+    <string name="enable_keyboard">١. فعّل لوحة مفاتيح زيرو</string>
+    <string name="choose_keyboard">٢. اختر لوحة المفاتيح</string>
+    <string name="try_typing">جرّب الكتابة / Try typing</string>
+    <string name="grant_microphone">امنح إذن الميكروفون</string>
+    <string name="import_model">استورد نموذج Tiny أو Base الرسمي بصيغة bin</string>
+    <string name="remove_model">احذف نموذج %1$s</string>
+    <string name="installed">مثبّت</string>
+    <string name="missing">غير مثبّت</string>
+    <string name="model_status">النماذج: Tiny %1$s | Base %2$s</string>
+    <string name="verifying_model">جارٍ التحقق من النموذج…</string>
+    <string name="model_verified">تم التحقق من %1$s</string>
+    <string name="model_rejected">رُفض الاستيراد: الملف غير صالح أو غير متاح</string>
+    <string name="tablet">جهاز لوحي</string>
+    <string name="phone">هاتف</string>
+    <string name="landscape">أفقي</string>
+    <string name="portrait">عمودي</string>
+    <string name="profile_label">%1$s / %2$s</string>
+    <string name="key_height">ارتفاع المفاتيح: %1$d%%</string>
+    <string name="mic_label">صوت</string>
+    <string name="offline_voice">إملاء صوتي بلا إنترنت</string>
+</resources>

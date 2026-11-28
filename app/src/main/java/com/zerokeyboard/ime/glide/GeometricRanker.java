@@ -11,6 +11,13 @@ public final class GeometricRanker {
   public final String word; public final double score;
   Candidate(String w,double s){word=w;score=s;}
  }
+ private static final class Template {
+  final String word; final List<Point> sampled; final Point first,last; final double length;
+  Template(String word,List<Point> raw){this.word=word;sampled=sample(raw);first=raw.get(0);last=raw.get(raw.size()-1);length=GeometricRanker.length(raw);}
+ }
+ private Map<Integer,Point> cachedKeys=Collections.emptyMap();
+ private List<String> cachedWords=Collections.emptyList();
+ private List<Template> cachedTemplates=Collections.emptyList();
  private static double d(Point a,Point b){return Math.hypot(a.x-b.x,a.y-b.y);}
  private static double length(List<Point> p){double n=0;for(int i=1;i<p.size();i++)n+=d(p.get(i-1),p.get(i));return n;}
  private static List<Point> sample(List<Point> p){
@@ -25,22 +32,39 @@ public final class GeometricRanker {
    out.add(new Point(a.x+(b.x-a.x)*f,a.y+(b.y-a.y)*f));
   }return out;
  }
- public List<Candidate> rank(List<Point> trace,Map<Integer,Point> keys,Collection<String> words,int topK){
+ private static int normalized(int cp){
+  cp=Character.toLowerCase(cp);
+  return cp=='أ'||cp=='إ'||cp=='آ'? 'ا':cp;
+ }
+ private static Point key(Map<Integer,Point> keys,int cp){
+  Point value=keys.get(cp);
+  return value!=null?value:keys.get(normalized(cp));
+ }
+ private static boolean sameKeys(Map<Integer,Point> first,Map<Integer,Point> second){
+  if(first.size()!=second.size())return false;
+  for(Map.Entry<Integer,Point> entry:first.entrySet()){
+   Point other=second.get(entry.getKey());Point point=entry.getValue();
+   if(other==null||Double.doubleToLongBits(point.x)!=Double.doubleToLongBits(other.x)||Double.doubleToLongBits(point.y)!=Double.doubleToLongBits(other.y))return false;
+  }return true;
+ }
+ private void prepare(Map<Integer,Point> keys,Collection<String> words){
+  List<String> wordList=new ArrayList<>(words);
+  if(wordList.equals(cachedWords)&&sameKeys(keys,cachedKeys))return;
+  Map<Integer,Point> keyCopy=new HashMap<>(keys);List<Template> templates=new ArrayList<>();
+  for(String word:wordList){
+   if(word.isEmpty())continue;List<Point> raw=new ArrayList<>();
+   for(int i=0;i<word.length();){int cp=word.codePointAt(i);i+=Character.charCount(cp);Point point=key(keyCopy,cp);if(point==null){raw.clear();break;}raw.add(point);}
+   if(raw.size()>=2&&length(raw)>0)templates.add(new Template(word,raw));
+  }
+  cachedKeys=keyCopy;cachedWords=wordList;cachedTemplates=templates;
+ }
+ public synchronized List<Candidate> rank(List<Point> trace,Map<Integer,Point> keys,Collection<String> words,int topK){
   if(trace.size()<2||topK<1||length(trace)==0)return Collections.emptyList();
-  List<Point> actual=sample(trace);
-  List<Candidate> ranked=new ArrayList<>();
-  for(String word:words){
-   if(word.isEmpty())continue;
-   List<Point> template=new ArrayList<>();
-   for(int i=0;i<word.length();){
-    int cp=word.codePointAt(i);i+=Character.charCount(cp);Point key=keys.get(cp);
-    if(key==null){template.clear();break;}template.add(key);
-   }
-   if(template.size()<2||length(template)==0)continue;
-   List<Point> expected=sample(template);double error=0;
-   for(int i=0;i<SAMPLES;i++)error+=d(actual.get(i),expected.get(i));
-   double score=error/SAMPLES+0.4*(d(trace.get(0),template.get(0))+d(trace.get(trace.size()-1),template.get(template.size()-1)))+0.08*Math.abs(length(trace)-length(template));
-   ranked.add(new Candidate(word,score));
+  prepare(keys,words);List<Point> actual=sample(trace);List<Candidate> ranked=new ArrayList<>();double traceLength=length(trace);
+  for(Template template:cachedTemplates){
+   double error=0;for(int i=0;i<SAMPLES;i++)error+=d(actual.get(i),template.sampled.get(i));
+   double score=error/SAMPLES+0.4*(d(trace.get(0),template.first)+d(trace.get(trace.size()-1),template.last))+0.08*Math.abs(traceLength-template.length);
+   ranked.add(new Candidate(template.word,score));
   }
   ranked.sort(Comparator.comparingDouble((Candidate c)->c.score).thenComparing(c->c.word));
   return new ArrayList<>(ranked.subList(0,Math.min(topK,ranked.size())));

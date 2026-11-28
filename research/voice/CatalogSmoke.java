@@ -8,6 +8,8 @@ public class CatalogSmoke {
   assert ModelCatalog.byHash(null)==null;
   assert ModelCatalog.TINY.sha256.matches("[0-9a-f]{64}") && ModelCatalog.BASE.sha256.matches("[0-9a-f]{64}");
   assert !ModelCatalog.TINY.filename.contains(".en") && !ModelCatalog.BASE.filename.contains(".en");
-  System.out.println("PASS: 7 model catalog smoke assertions");
+  assert ModelCatalog.TINY.bytes==32152673L;
+  assert ModelCatalog.BASE.bytes==59707625L;
+  System.out.println("PASS: 9 model catalog smoke assertions");
  }
 }
