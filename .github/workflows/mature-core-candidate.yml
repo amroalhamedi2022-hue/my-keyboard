@@ -148,6 +148,13 @@ jobs:
           (cd owner-release && sha256sum *.apk *.jar > checksums.sha256)
           # Provide complete corresponding modified source and build scripts for the GPL derivative.
           tar -czf owner-release/zero-mature-corresponding-source.tar.gz --exclude=.git --exclude=.gradle --exclude=.cxx --exclude=build --exclude=local.properties --exclude=zero-staged-voice -C upstream/heliboard .
+      - name: Retain unsigned candidate for independent QA retries
+        if: github.event.label.name == 'zero-mature-owner-release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: zero-mature-unsigned-test-input
+          path: owner-release/
+          if-no-files-found: error
       - name: Retrieve previous 0.2.1 release
         if: github.event.label.name == 'zero-mature-owner-release'
         uses: actions/download-artifact@v4

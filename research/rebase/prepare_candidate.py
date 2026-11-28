@@ -39,6 +39,36 @@ def prepare(upstream, zero):
     replace(manifest,'android:defaultToDeviceProtectedStorage="true"','android:defaultToDeviceProtectedStorage="false"')
     replace(manifest,'android:directBootAware="true"','android:directBootAware="false"',2)
     replace(manifest,'    <uses-permission android:name="android.permission.READ_CONTACTS" />\n','')
+    # A delayed package/boot/locale broadcast can arrive while SettingsActivity is visible.
+    # Let Android manage the process lifecycle for the installed, user-facing app.
+    replace(manifest, '        <receiver android:name="SystemBroadcastReceiver"\n                android:exported="true">',
+            '        <receiver android:name="SystemBroadcastReceiver"\n                android:exported="false">')
+    receiver = java / "SystemBroadcastReceiver.java"
+    for import_line in (
+        "import android.os.Process;\n",
+        "import android.view.inputmethod.InputMethodManager;\n",
+        "import helium314.keyboard.latin.utils.UncachedInputMethodManagerUtils;\n",
+    ):
+        replace(receiver, import_line, "")
+    replace(receiver, """
+        // The process that hosts this broadcast receiver is invoked and remains alive even after
+        // 1) the package has been re-installed,
+        // 2) the device has just booted,
+        // 3) a new user has been created.
+        // There is no good reason to keep the process alive if this IME isn't a current IME.
+        final InputMethodManager imm = (InputMethodManager)
+                context.getSystemService(Context.INPUT_METHOD_SERVICE);
+        // Called to check whether this IME has been triggered by the current user or not
+        final boolean isInputMethodManagerValidForUserOfThisProcess =
+                !imm.getInputMethodList().isEmpty();
+        final boolean isCurrentImeOfCurrentUser = isInputMethodManagerValidForUserOfThisProcess
+                && UncachedInputMethodManagerUtils.isThisImeCurrent(context, imm);
+        if (!isCurrentImeOfCurrentUser) {
+            final int myPid = Process.myPid();
+            Log.i(TAG, "Killing my process: pid=" + myPid);
+            Process.killProcess(myPid);
+        }
+""", "")
     # Keep label resource references: WelcomeWizard previously read labelRes, which is zero for literal labels.
     replace(app/"src/main/res/values/donottranslate.xml",'<string name="english_ime_name" translatable="false">HeliBoard</string>','<string name="english_ime_name" translatable="false">Zero Keyboard</string>')
     replace(app/"src/main/res/values/strings.xml",'<string name="ime_settings">HeliBoard Settings</string>','<string name="ime_settings">Zero Keyboard Settings</string>')

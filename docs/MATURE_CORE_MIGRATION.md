@@ -23,3 +23,12 @@ release and fresh installation, wizard completion, and cold and warm settings
 launches. It retains the emulator evidence on failure and only makes the owner
 signing kit available after the runtime gate. The separate debug touch check
 continues to cover the synthetic editor and the bilingual input smoke.
+
+The first 104 release gate opened the welcome screen following the update and
+then recorded an unexplained SIGKILL for the app process. Source inspection
+found that the upstream system broadcast receiver kills its entire process
+whenever the keyboard is inactive. A delayed package replacement broadcast can
+therefore kill a foreground welcome screen. Zero removes this process
+termination and keeps normal package, boot and locale handling in a
+non-exported receiver. The corrected Release uses the same
+installation and upgrade gate.
