@@ -1,6 +1,8 @@
 package com.zerokeyboard.ime;
 import android.content.Context;
 import android.content.SharedPreferences;
+import com.zerokeyboard.ime.glide.PersonalLexicon;
+import java.util.*;
 final class ZeroSettings {
  private final SharedPreferences p;
  ZeroSettings(Context c){p=c.getSharedPreferences("zero_settings",Context.MODE_PRIVATE);}
@@ -22,5 +24,13 @@ final class ZeroSettings {
  private String profileKey(boolean tablet,boolean landscape){return (tablet?"tablet":"phone")+(landscape?"_landscape":"_portrait");}
  void layout(boolean tablet,boolean landscape,LayoutProfile.Mode mode){p.edit().putString(profileKey(tablet,landscape)+"_mode",mode.name()).apply();}
  void height(boolean tablet,boolean landscape,int value){p.edit().putInt(profileKey(tablet,landscape)+"_height",value).apply();}
+ boolean personalEnabled(){return p.getBoolean("personal_enabled",true);}
+ String personalText(boolean ar){return p.getString(ar?"personal_ar":"personal_en","");}
+ void personalText(boolean ar,String value){List<String> words=PersonalLexicon.parse(value,ar);p.edit().putString(ar?"personal_ar":"personal_en",String.join("\n",words)).apply();}
+ List<String> personalWords(boolean ar){if(!personalEnabled())return Collections.emptyList();try{return PersonalLexicon.parse(personalText(ar),ar);}catch(IllegalArgumentException e){return Collections.emptyList();}}
+ boolean clipboard(){return p.getBoolean("clipboard_history",false);}
+ long clipboardTtl(){int min=p.getInt("clipboard_minutes",15);return Math.max(1,Math.min(60,min))*60000L;}
+ void clipboardMinutes(int min){p.edit().putInt("clipboard_minutes",Math.max(1,Math.min(60,min))).apply();}
+ boolean emoji(){return p.getBoolean("emoji_panel",true);}
  void set(String key,boolean value){p.edit().putBoolean(key,value).apply();}
 }

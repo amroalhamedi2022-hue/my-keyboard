@@ -34,6 +34,13 @@ public final class SetupActivity extends Activity {
   toggle(root,"Spacebar cursor gesture",settings.spaceCursor(),settings,"space_cursor");
   if(android.os.Build.VERSION.SDK_INT>=30)toggle(root,"Show Android Autofill suggestions",settings.inlineAutofill(),settings,"inline_autofill");
   toggle(root,"Editor toolbar",settings.editorTools(),settings,"editor_tools");
+  toggle(root,"Personal glide dictionary",settings.personalEnabled(),settings,"personal_enabled");
+  dictionary(root,settings,false);dictionary(root,settings,true);
+  toggle(root,"Session clipboard (explicit save only)",settings.clipboard(),settings,"clipboard_history");
+  TextView retention=new TextView(this);retention.setText("Clipboard expiry: "+settings.clipboardTtl()/60000+" min");root.addView(retention);
+  SeekBar expiry=new SeekBar(this);expiry.setMax(59);expiry.setProgress((int)(settings.clipboardTtl()/60000)-1);
+  expiry.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){retention.setText("Clipboard expiry: "+(n+1)+" min");if(user)settings.clipboardMinutes(n+1);}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});root.addView(expiry);
+  toggle(root,"Emoji panel",settings.emoji(),settings,"emoji_panel");
   toggle(root,"Stop dictation after 1.2 seconds of silence",settings.stopOnSilence(),settings,"voice_endpoint");
   toggle(root,"Review dictated text before insertion",settings.voiceReview(),settings,"voice_review");
   for(boolean tablet:new boolean[]{false,true})for(boolean landscape:new boolean[]{false,true})profile(root,settings,tablet,landscape);
@@ -52,6 +59,13 @@ public final class SetupActivity extends Activity {
   imports.execute(()->{try{ModelCatalog model=models.install(uri);runOnUiThread(()->{if(!isDestroyed()){refreshModels();Toast.makeText(this,getString(R.string.model_verified,model.name()),Toast.LENGTH_SHORT).show();}});}catch(Exception e){runOnUiThread(()->{if(!isDestroyed()){refreshModels();Toast.makeText(this,R.string.model_rejected,Toast.LENGTH_LONG).show();}});}});
  }
  @Override protected void onDestroy(){imports.shutdown();super.onDestroy();}
+ private void dictionary(LinearLayout root,ZeroSettings settings,boolean arabic){
+  Button edit=new Button(this);edit.setText(arabic?"Edit Arabic personal words":"Edit English personal words");
+  edit.setOnClickListener(v->{EditText words=new EditText(this);words.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE|android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);words.setImeOptions(android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING);words.setText(settings.personalText(arabic));words.setMinLines(4);words.setMaxLines(8);words.setHint("One word per line");
+   android.app.AlertDialog d=new android.app.AlertDialog.Builder(this).setTitle(arabic?"Arabic words":"English words").setMessage("Explicit personal vocabulary only. Up to 512 words; no automatic learning.").setView(words).setPositiveButton("Save",null).setNegativeButton("Cancel",null).setNeutralButton("Clear",null).create();
+   d.setOnShowListener(dialog->{d.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(b->{try{settings.personalText(arabic,words.getText().toString());d.dismiss();}catch(IllegalArgumentException e){words.setError("Use only letters of the selected language, 2–32 per word.");}});d.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener(b->words.setText(""));});d.show();
+  });root.addView(edit);
+ }
  private void profile(LinearLayout root,ZeroSettings settings,boolean tablet,boolean landscape){
   TextView label=new TextView(this);label.setText(getString(R.string.profile_label,getString(tablet?R.string.tablet:R.string.phone),getString(landscape?R.string.landscape:R.string.portrait)));root.addView(label);
   Spinner modes=new Spinner(this);String[] names={"Full","Split (wide screens)","One hand left","One hand right"};

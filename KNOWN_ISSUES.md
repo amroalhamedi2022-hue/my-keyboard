@@ -6,3 +6,5 @@ Batch 2: seed vocabulary has narrow coverage; ranking threshold uncalibrated; co
 Batch 3 supersedes "no voice" with experimental bounded local voice source integration, not verified on device. No continuous dictation, streaming, true VAD, verified code-switch accuracy, download manager or model warm cache. Arm64/x86_64 only, no release. Native cancellation currently discards result but does not interrupt inference.
 
 Batch 04: native abort callback added, not compiled/tested; model loading still cannot be interrupted. Adaptive layouts and editor toolbar authored; no floating layout or device validation. Voice review optional, text held in memory until insert/discard/cancellation; simultaneous manual typing still cancels. Earlier limitations remain unless explicitly superseded.
+
+Batch 06: personal dictionary is limited to 512 words/language; no production lexicon. Clipboard explicitly saved plain text only, session RAM only; sensitive heuristics incomplete, pinned entries expire at session end. Emoji seed limited, no search or skin tones. Android integration and optimized ranker unverified.

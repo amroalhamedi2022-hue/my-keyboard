@@ -8,6 +8,12 @@ import android.widget.*;
 import com.zerokeyboard.ime.glide.GeometricRanker;
 import com.zerokeyboard.ime.glide.SeedLexicon;
 import java.util.*;
+import com.zerokeyboard.ime.glide.PersonalLexicon;
+import com.zerokeyboard.ime.tools.ClipboardHistory;
+import com.zerokeyboard.ime.tools.EmojiCatalog;
+import android.content.ClipboardManager;
+import android.content.ClipData;
+import android.os.SystemClock;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import com.zerokeyboard.ime.voice.*;
@@ -17,6 +23,9 @@ public final class ZeroImeService extends InlineImeService {
  private boolean shift=false,symbols=false,active=false;
  private GlideSurface root;
  private LinearLayout strip,reviewRow;
+ private final ClipboardHistory clipboard=new ClipboardHistory();
+ private int panel,emojiGroup;
+ private final ArrayList<String> recentEmoji=new ArrayList<>();
  private LayoutProfile profile;
  private String pendingVoice="";
  private EditorPolicy policy=EditorPolicy.from(null);
@@ -37,19 +46,19 @@ public final class ZeroImeService extends InlineImeService {
   root.setPadding(dp(3),dp(4),dp(3),dp(5));root.setBackgroundColor(Color.rgb(24,29,38));render();return wrapWithInlineStrip(root);
  }
  @Override public boolean onEvaluateFullscreenMode(){return false;}
- @Override public void onStartInput(EditorInfo info,boolean restarting){invalidateInlineSession();cancelVoice();clearComposition(false);super.onStartInput(info,restarting);active=true;policy=EditorPolicy.from(info);shift=false;symbols=false;render();}
- @Override public void onStartInputView(EditorInfo info,boolean restarting){invalidateInlineSession();cancelVoice();super.onStartInputView(info,restarting);active=true;policy=EditorPolicy.from(info);render();}
- @Override public void onFinishInputView(boolean finishingInput){invalidateInlineSession();cancelVoice();clearComposition(true);active=false;if(root!=null)root.reset();super.onFinishInputView(finishingInput);}
- @Override public void onFinishInput(){invalidateInlineSession();cancelVoice();clearComposition(false);active=false;policy=EditorPolicy.from(null);shift=false;symbols=false;if(root!=null)root.reset();super.onFinishInput();}
+ @Override public void onStartInput(EditorInfo info,boolean restarting){invalidateInlineSession();cancelVoice();clearComposition(false);super.onStartInput(info,restarting);active=true;policy=EditorPolicy.from(info);resetPanels();shift=false;symbols=false;render();}
+ @Override public void onStartInputView(EditorInfo info,boolean restarting){invalidateInlineSession();cancelVoice();super.onStartInputView(info,restarting);active=true;policy=EditorPolicy.from(info);resetPanels();render();}
+ @Override public void onFinishInputView(boolean finishingInput){invalidateInlineSession();cancelVoice();clearComposition(true);active=false;resetPanels();if(root!=null)root.reset();super.onFinishInputView(finishingInput);}
+ @Override public void onFinishInput(){invalidateInlineSession();cancelVoice();clearComposition(false);active=false;panel=0;clipboard.clear();policy=EditorPolicy.from(null);shift=false;symbols=false;if(root!=null)root.reset();super.onFinishInput();}
  @Override public void onCurrentInputMethodSubtypeChanged(InputMethodSubtype subtype){
   super.onCurrentInputMethodSubtypeChanged(subtype);if(subtype!=null){cancelVoice();clearComposition(true);lang=subtype.getLocale().startsWith("ar")?KeyboardLayout.Language.AR:KeyboardLayout.Language.EN;shift=false;symbols=false;render();}
  }
  @Override public void onConfigurationChanged(Configuration config){cancelVoice();clearComposition(true);super.onConfigurationChanged(config);render();}
- @Override public void onWindowHidden(){invalidateInlineSession();cancelVoice();super.onWindowHidden();}
- @Override public void onDestroy(){voice.close();super.onDestroy();}
+ @Override public void onWindowHidden(){invalidateInlineSession();cancelVoice();panel=0;clipboard.clear();super.onWindowHidden();}
+ @Override public void onDestroy(){clipboard.clear();recentEmoji.clear();voice.close();super.onDestroy();}
  private void cancelVoice(){pendingVoice="";if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(View.GONE);}editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText(R.string.mic_label);voiceKey.setContentDescription(getString(R.string.offline_voice));}}
  private boolean voiceAllowed(){return active&&isInputViewShown()&&settings!=null&&settings.voice()&&!settings.incognito()&&policy.allowPersonalization&&!policy.sensitive;}
- private boolean glideAllowed(){return active&&settings!=null&&settings.glide(lang==KeyboardLayout.Language.AR)&&!settings.incognito()&&policy.allowPersonalization&&!shift&&!symbols&&!policy.numeric;}
+ private boolean glideAllowed(){return panel==0&&active&&settings!=null&&settings.glide(lang==KeyboardLayout.Language.AR)&&!settings.incognito()&&policy.allowPersonalization&&!shift&&!symbols&&!policy.numeric;}
  private LayoutProfile profile(){Configuration c=getResources().getConfiguration();boolean tablet=c.smallestScreenWidthDp>=600,landscape=c.orientation==Configuration.ORIENTATION_LANDSCAPE;return LayoutProfile.resolve(c.screenWidthDp,landscape,tablet,settings.layout(tablet,landscape),settings.height(tablet,landscape));}
  private LinearLayout row(){LinearLayout line=new LinearLayout(this);line.setGravity(Gravity.CENTER);LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);if(profile!=null){if(profile.mode==LayoutProfile.Mode.LEFT)params.rightMargin=dp(profile.sideInset);if(profile.mode==LayoutProfile.Mode.RIGHT)params.leftMargin=dp(profile.sideInset);}root.addView(line,params);return line;}
  private Button key(LinearLayout row,String label,String desc,float weight,Runnable action){
@@ -59,7 +68,8 @@ public final class ZeroImeService extends InlineImeService {
   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(h),weight);lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);b.setOnClickListener(v->action.run());return b;
  }
  @android.annotation.SuppressLint("ClickableViewAccessibility") private void render(){
-  if(root==null)return;profile=profile();root.configure(glideAllowed(),settings.trail());root.removeAllViews();strip=row();strip.setVisibility(glideAllowed()?View.VISIBLE:View.GONE);strip.setMinimumHeight(dp(profile.keyHeight));reviewRow=row();reviewRow.setVisibility(View.GONE);
+  if(root==null)return;profile=profile();if(!toolsAllowed()){panel=0;clipboard.clear();}if(!settings.clipboard()){clipboard.clear();if(panel==1)panel=0;}if(!settings.emoji()&&panel==2)panel=0;root.configure(glideAllowed(),settings.trail());root.removeAllViews();strip=row();strip.setVisibility(glideAllowed()?View.VISIBLE:View.GONE);strip.setMinimumHeight(dp(profile.keyHeight));reviewRow=row();reviewRow.setVisibility(View.GONE);
+  if(panel!=0){renderPanel();return;}
   if(settings.editorTools()&&active&&!policy.sensitive&&!settings.incognito())editorToolbar();
   if(settings.numberRow()&&!policy.numeric&&!symbols){LinearLayout digits=row();for(String digit:LayoutProfile.digits(settings.indic()&&lang==KeyboardLayout.Language.AR).split(" "))key(digits,digit,digit,1f,()->insert(digit));}
   for(String letters:KeyboardLayout.rows(lang,shift,symbols,policy.numeric)){
@@ -82,7 +92,45 @@ public final class ZeroImeService extends InlineImeService {
   key(tools,"Copy","Copy selected",1f,()->editorAction(android.R.id.copy));
   key(tools,"Cut","Cut selected",1f,()->editorAction(android.R.id.cut));
   key(tools,"Paste","Paste",1f,()->editorAction(android.R.id.paste));
+  if(settings.clipboard()&&toolsAllowed())key(tools,"Clip","Session clipboard",1f,()->openPanel(1));
+  if(settings.emoji()&&toolsAllowed())key(tools,"☺","Emoji panel",1f,()->openPanel(2));
  }
+ private boolean toolsAllowed(){return active&&settings!=null&&policy.allowPersonalization&&!policy.sensitive&&!settings.incognito();}
+ private void resetPanels(){panel=0;if(!toolsAllowed()||!settings.clipboard())clipboard.clear();}
+ private void openPanel(int value){if(!toolsAllowed())return;cancelVoice();clearComposition(true);panel=value;render();}
+ private void renderPanel(){
+  LinearLayout controls=row();key(controls,"ABC","Back to keyboard",1f,()->{panel=0;render();});
+  if(panel==1){
+   key(controls,"Save","Save current clipboard",1.7f,this::saveClipboard);
+   key(controls,"Clear","Clear history",1f,()->{clipboard.clear();render();});
+   long now=SystemClock.elapsedRealtime(),ttl=settings.clipboardTtl();
+   List<ClipboardHistory.Entry> entries=clipboard.list(now,ttl);
+   if(entries.isEmpty()){TextView empty=new TextView(this);empty.setText("No saved text");empty.setTextColor(Color.WHITE);root.addView(empty);}
+   // Cap visible rows to avoid covering the editor in landscape.
+   ScrollView scroll=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);scroll.addView(list);root.addView(scroll,new LinearLayout.LayoutParams(-1,dp(profile.keyHeight*3)));
+   for(ClipboardHistory.Entry e:entries){LinearLayout line=new LinearLayout(this);list.addView(line);
+    String label=e.text.replace('\n',' ');if(label.length()>24)label=label.substring(0,24)+"…";
+    key(line,label,"Paste saved text",3f,()->pasteSaved(e.id));key(line,e.pinned?"Unpin":"Pin","Toggle pin",1f,()->{clipboard.pin(e.id,!e.pinned,SystemClock.elapsedRealtime(),settings.clipboardTtl());render();});key(line,"×","Remove entry",.7f,()->{clipboard.remove(e.id);render();});
+   }
+  }else{
+   String[] names={"Recent","Faces","Gestures","Nature","Objects"};
+   LinearLayout tabs=row();for(int i=0;i<names.length;i++){final int selected=i-1;key(tabs,names[i],"Emoji "+names[i],1f,()->{emojiGroup=selected;render();});}
+   String[] emojis=emojiGroup<0?recentEmoji.toArray(new String[0]):EmojiCatalog.group(emojiGroup);
+   for(int i=0;i<emojis.length;i+=8){LinearLayout line=row();for(int j=i;j<Math.min(i+8,emojis.length);j++){String emoji=emojis[j];key(line,emoji,"Insert emoji "+emoji,1f,()->{if(!toolsAllowed()||!settings.emoji())return;recentEmoji.remove(emoji);recentEmoji.add(0,emoji);if(recentEmoji.size()>24)recentEmoji.remove(24);insert(emoji);});}}
+  }
+ }
+ private void saveClipboard(){
+  if(!toolsAllowed()||!settings.clipboard()||!isInputViewShown())return;
+  boolean saved=false;
+  try{ClipboardManager manager=getSystemService(ClipboardManager.class);ClipData clip=manager==null?null:manager.getPrimaryClip();
+   if(clip!=null&&clip.getItemCount()==1&&clip.getDescription().hasMimeType("text/plain")){
+    android.os.PersistableBundle extras=clip.getDescription().getExtras();boolean sensitive=extras!=null&&(extras.getBoolean("android.content.extra.IS_SENSITIVE",false)||extras.getBoolean("android.content.extra.IS_SENSITIVE_CLIP",false));
+    CharSequence value=clip.getItemAt(0).getText();if(value!=null&&value.length()<=ClipboardHistory.MAX_TEXT)saved=clipboard.save(value.toString(),sensitive,SystemClock.elapsedRealtime(),settings.clipboardTtl());
+   }
+  }catch(RuntimeException ignored){}
+  if(!saved)Toast.makeText(this,"Clipboard unavailable or not eligible for saving",Toast.LENGTH_SHORT).show();render();
+ }
+ private void pasteSaved(long id){if(!toolsAllowed()||!settings.clipboard())return;for(ClipboardHistory.Entry e:clipboard.list(SystemClock.elapsedRealtime(),settings.clipboardTtl()))if(e.id==id){insert(e.text);panel=0;render();return;}}
  private void editorAction(int action){
   if(!active||policy.sensitive||settings.incognito())return;cancelVoice();clearComposition(true);InputConnection c=getCurrentInputConnection();if(c!=null)c.performContextMenuAction(action);
  }
@@ -126,7 +174,7 @@ public final class ZeroImeService extends InlineImeService {
  }
  private void glide(List<GeometricRanker.Point> trace,Map<Integer,GeometricRanker.Point> centers){
   cancelVoice();if(!glideAllowed())return;InputConnection c=getCurrentInputConnection();if(c==null)return;
-  List<GeometricRanker.Candidate> candidates=ranker.rank(trace,centers,SeedLexicon.words(lang==KeyboardLayout.Language.AR),3);
+  List<GeometricRanker.Candidate> candidates=ranker.rank(trace,centers,PersonalLexicon.merge(SeedLexicon.words(lang==KeyboardLayout.Language.AR),settings.personalWords(lang==KeyboardLayout.Language.AR)),3);
   if(candidates.isEmpty()||candidates.get(0).score>2.0)return;
   clearComposition(true);if(c!=getCurrentInputConnection())return;
   String word=candidates.get(0).word+(settings.space()?" ":"");

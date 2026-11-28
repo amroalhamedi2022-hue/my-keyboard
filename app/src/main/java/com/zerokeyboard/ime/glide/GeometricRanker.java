@@ -1,6 +1,6 @@
 package com.zerokeyboard.ime.glide;
 import java.util.*;
-/** Research baseline, not wired into IME. Coordinates use consistent keyboard-width units. */
+/** Experimental IME geometric ranker. Coordinates use consistent keyboard-width units. */
 public final class GeometricRanker {
  private static final int SAMPLES=32;
  public static final class Point {
@@ -60,13 +60,16 @@ public final class GeometricRanker {
  }
  public synchronized List<Candidate> rank(List<Point> trace,Map<Integer,Point> keys,Collection<String> words,int topK){
   if(trace.size()<2||topK<1||length(trace)==0)return Collections.emptyList();
-  prepare(keys,words);List<Point> actual=sample(trace);List<Candidate> ranked=new ArrayList<>();double traceLength=length(trace);
+  prepare(keys,words);List<Point> actual=sample(trace);int limit=Math.min(topK,cachedTemplates.size());if(limit==0)return Collections.emptyList();
+  Comparator<Candidate> order=Comparator.comparingDouble((Candidate c)->c.score).thenComparing(c->c.word);
+  PriorityQueue<Candidate> best=new PriorityQueue<>(limit,order.reversed());double traceLength=length(trace);
   for(Template template:cachedTemplates){
+   double lower=0.4*(d(trace.get(0),template.first)+d(trace.get(trace.size()-1),template.last))+0.08*Math.abs(traceLength-template.length);
+   if(best.size()==limit&&lower>best.peek().score)continue;
    double error=0;for(int i=0;i<SAMPLES;i++)error+=d(actual.get(i),template.sampled.get(i));
-   double score=error/SAMPLES+0.4*(d(trace.get(0),template.first)+d(trace.get(trace.size()-1),template.last))+0.08*Math.abs(traceLength-template.length);
-   ranked.add(new Candidate(template.word,score));
+   Candidate candidate=new Candidate(template.word,error/SAMPLES+lower);
+   if(best.size()<limit)best.add(candidate);else if(order.compare(candidate,best.peek())<0){best.poll();best.add(candidate);}
   }
-  ranked.sort(Comparator.comparingDouble((Candidate c)->c.score).thenComparing(c->c.word));
-  return new ArrayList<>(ranked.subList(0,Math.min(topK,ranked.size())));
+  List<Candidate> ranked=new ArrayList<>(best);ranked.sort(order);return ranked;
  }
 }
