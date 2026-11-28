@@ -1,0 +1,4 @@
+# Master plan — 2026-11-27
+Owner directive: 27 sections, functionality and privacy before final design. Arabic and English exclusively, Android 10+ provisional, Pad 5 / Android 13 priority, mixed offline dictation then bilingual glide. No translation, medical dictionary, PC mode, advertising, tracking, cloud speech/text, mandatory accounts. All optional features configurable; correction off by default.
+Phases: 00 repository and evidence; 01 source/license audit; 02 ASR evaluation; 03 glide evaluation; 04 IME foundation; 05 local voice; 06 glide; 07 language/adaptive layouts; 08 settings/utilities; 09 autofill/security; 10 premium designs (30 references); 11 measured optimization; 12 signed release/test reports.
+Parallelize independent tasks. Preserve previous verified work. Build only at engineering milestones; no automatic APK on every change. See requirements for acceptance scope; no phase declared complete from source alone.

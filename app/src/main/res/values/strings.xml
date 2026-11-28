@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Zero Keyboard</string>
+    <string name="english">English</string>
+    <string name="arabic">العربية</string>
+    <string name="setup_info">Development baseline • Arabic / English\nOffline manual typing. Experimental glide uses a small built-in word list. Experimental local voice requires a verified imported model and microphone permission.</string>
+    <string name="enable_keyboard">1. Enable Zero Keyboard</string>
+    <string name="choose_keyboard">2. Choose keyboard</string>
+    <string name="try_typing">Try typing / جرّب الكتابة</string>
+    <string name="grant_microphone">Grant microphone permission</string>
+    <string name="import_model">Import official Tiny/Base Q5 model (.bin)</string>
+    <string name="remove_model">Remove %1$s model</string>
+    <string name="installed">installed</string>
+    <string name="missing">missing</string>
+    <string name="model_status">Models: Tiny %1$s | Base %2$s</string>
+    <string name="verifying_model">Verifying model…</string>
+    <string name="model_verified">%1$s verified</string>
+    <string name="model_rejected">Import rejected: invalid or unavailable file</string>
+    <string name="tablet">Tablet</string>
+    <string name="phone">Phone</string>
+    <string name="landscape">Landscape</string>
+    <string name="portrait">Portrait</string>
+    <string name="profile_label">%1$s / %2$s</string>
+    <string name="key_height">Key height: %1$d%%</string>
+    <string name="mic_label">Mic</string>
+    <string name="offline_voice">Offline voice typing</string>
+</resources>

@@ -1,0 +1,17 @@
+# Requirements register
+- R01 Genuine IME; Arabic/English tap, actions, editor types, lifecycle, rotation, multi-window, Unicode, RTL/LTR, no root.
+- R02 Voice: independent offline mixed ar/en, Palestinian/Levantine/MSA/accented English; script and dialect preservation; streaming partial/final, VAD, noise/silence, hallucination control, pause/resume/stop/undo, review, commands/punctuation/numbers/hints, external mic, concurrent manual typing, editor cancellation, visible recording, no raw retention; sensitive contexts disabled.
+- R03 Model manager: separate optional Lite/Balanced/Pro models (30–60/60–100/100–200 MB targets only), signed/hash manifests, import/download/resume/version/update/delete/storage/compatibility/recovery, no user data uploads.
+- R04 Glide: Arabic/English independent of autocorrect, repeated letters, speed and imprecision, dialect/user lexicon, context rank, preview/trail/alternatives/replacement/spacing, tap integration, sensitivity, cursor swipe, swipe delete/cancel, split/tablet, experimental multiword only after reliability.
+- R05 Language/layout: QWERTY and Arabic variants, language/globe/space switch, diacritics, punctuation, numeral format/row, long press, personal dictionary, shortcuts, frequencies, optional learning and suggestions, preserve text.
+- R06 Settings: searchable, granular toggles for language, correction default off, glide, voice, dimensions and styling, sound/haptic, toolbar, clipboard, privacy, performance, per app where feasible, reset/backup. Mandatory security never optional.
+- R07 Phone/tablet/full/split/floating/one hand/portrait/landscape/multiwindow/resize and separate preferences.
+- R08 Tools: clipboard pin/expiry/clear/sensitive filters and image insertion, editing/select/cursor/undo-redo, emoji search/categories/recents/skin tones, kaomoji, diacritics, toolbar, popups, backup.
+- R09 Autofill inline and fallback, compatible password managers and passkeys; no vault access. Real app integration matrix.
+- R10 Offline and security: no content/audio/clipboard/credentials/learnings transmitted; optional audited resource-only network disable; no logging/analytics, no learning/suggestions/recording in sensitive contexts, private storage, keystore where needed, safe resources/archives, dependency/manifest audit.
+- R11 Modular themes: geometry, color/gradients/background/transparency/glass/borders/shadows/type/toolbar/strip/trail/popup, transitions/press animations/light/dark/import/export; 30+ reference audit, distinct premium designs and real screenshots.
+- R12 Performance: 120 Hz target (8.33 ms budget), touch/startup/glide/voice latency, RAM/CPU/battery/thermal, no idle inference, 15–30 MB core target not guarantee.
+- R13 Research: component-level source/license checks, ASR/Glide benchmarks with independent data, Colab reproducibility, no fabricated measurements, separate training/test; evaluate all owner-named projects and model classes.
+- R14 QA: unit/integration/instrumented tests, IME/input/security/OTP/offline/autofill/layout/rotation/accessibility/resources/performance, real device vs emulator, actual screenshot comparisons.
+- R15 Release: signed APK, stable identifier/key, verify install/update, models/docs/changelog/test/security/performance reports, direct verified artifacts.
+- R16 Efficient build: batches, targeted checks, caches, no repetitive CI; build whenever evidence warrants.

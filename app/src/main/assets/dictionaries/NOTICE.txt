@@ -1,0 +1,6 @@
+FrequencyWords — hermitdave / project contributors
+Source: https://github.com/hermitdave/FrequencyWords/tree/525f9b560de45753a5ea01069454e72e9aa541c6/content/2018
+Data source identified by upstream: OpenSubtitles2018.
+Content license: Creative Commons Attribution-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-sa/4.0/
+Modified by Zero Keyboard: normalized NFC, lowercase English, filtered language-specific letters and 2–32 characters, kept maximum count per word, sorted by descending count and retained 8,000 entries per language. These two derived resource files are distributed under CC BY-SA 4.0. The source list is not an accuracy guarantee, nor a curated Palestinian dialect lexicon. No endorsement implied.

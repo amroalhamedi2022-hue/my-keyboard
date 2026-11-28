@@ -1,0 +1,147 @@
+name: Android 13 runtime milestone
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+  push:
+    branches: ['feature/zero-ime-foundation', 'main']
+    paths: ['.github/runtime-milestone.txt']
+permissions:
+  contents: read
+concurrency:
+  group: zero-runtime-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  android13:
+    if: github.event_name != 'pull_request' || (github.event.label.name == 'zero-runtime-milestone' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Use hosted Android SDK (no obsolete tools package)
+        shell: bash
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          test -d "$SDK"
+          MANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$MANAGER" ]; then
+            MANAGER="$(find "$SDK/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          fi
+          test -x "$MANAGER"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          dirname "$MANAGER" >> "$GITHUB_PATH"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          "$MANAGER" --sdk_root="$SDK" --licenses < <(yes) >/dev/null
+          "$MANAGER" --sdk_root="$SDK" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify probe helpers
+        run: python3 -m unittest discover -s research/android -p 'test_*.py' -v
+      - name: Theme, emoji and clipboard privacy smoke
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-tools7 app/src/main/java/com/zerokeyboard/ime/ThemeTokens.java app/src/main/java/com/zerokeyboard/ime/tools/EmojiCatalog.java app/src/main/java/com/zerokeyboard/ime/tools/ClipboardHistory.java research/tools/Tools7Smoke.java
+          java -cp /tmp/zero-tools7 Tools7Smoke
+      - name: Continuous audio segmentation and queue smoke
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-continuous app/src/main/java/com/zerokeyboard/ime/voice/SpeechWindow.java app/src/main/java/com/zerokeyboard/ime/voice/AudioSegments.java app/src/main/java/com/zerokeyboard/ime/voice/SegmentedDecoder.java research/voice/ContinuousSmoke.java
+          java -cp /tmp/zero-continuous ContinuousSmoke
+      - name: Frequency resource and voice options smoke
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-batch7 app/src/main/java/com/zerokeyboard/ime/glide/FrequencyLexicon.java app/src/main/java/com/zerokeyboard/ime/voice/VoiceOptions.java research/tools/Batch7Smoke.java
+          java -cp /tmp/zero-batch7 Batch7Smoke
+      - name: Personal lexicon, clipboard and ranker smoke
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-batch6 app/src/main/java/com/zerokeyboard/ime/glide/PersonalLexicon.java app/src/main/java/com/zerokeyboard/ime/glide/GeometricRanker.java app/src/main/java/com/zerokeyboard/ime/tools/ClipboardHistory.java research/tools/Batch6Smoke.java research/glide/RankerEquivalence.java
+          java -ea -cp /tmp/zero-batch6 Batch6Smoke
+          java -ea -cp /tmp/zero-batch6 RankerEquivalence
+      - name: Compact keyboard geometry
+        run: |
+          javac -encoding UTF-8 -d /tmp/compact app/src/main/java/com/zerokeyboard/ime/CompactMetrics.java app/src/main/java/com/zerokeyboard/ime/KeyboardLayout.java research/layout/CompactSmoke.java
+          java -ea -cp /tmp/compact CompactSmoke
+      - name: Validate bundled dictionary resources
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-dict app/src/main/java/com/zerokeyboard/ime/glide/FrequencyLexicon.java research/layout/DictionarySmoke.java
+          java -cp /tmp/zero-dict DictionarySmoke
+      - name: Generate JNI header for review
+        run: |
+          mkdir -p runtime-results
+          javac -encoding UTF-8 -h runtime-results -d /tmp/zero-jni app/src/main/java/com/zerokeyboard/ime/voice/VoiceOptions.java app/src/main/java/com/zerokeyboard/ime/voice/NativeWhisper.java
+      - name: Build once for runtime milestone
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease --no-daemon
+      - name: Inspect debug APK
+        run: |
+          mkdir -p runtime-results
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          sha256sum "$APK" > runtime-results/apk.sha256
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$APK" > runtime-results/permissions.txt
+          if grep -q 'android.permission.INTERNET' runtime-results/permissions.txt; then
+            echo 'Unexpected INTERNET permission'; exit 1
+          fi
+      - name: Prepare unsigned release and offline signing kit
+        run: |
+          mkdir -p release-output/classes
+          APK=app/build/outputs/apk/release/app-release-unsigned.apk
+          test -f "$APK"
+          TOOL="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOL/zipalign" -P 16 -f 4 "$APK" release-output/Zero-Keyboard-0.1.0-alpha02-unsigned.apk
+          "$TOOL/zipalign" -c -P 16 4 release-output/Zero-Keyboard-0.1.0-alpha02-unsigned.apk
+          "$TOOL/aapt" dump badging release-output/Zero-Keyboard-0.1.0-alpha02-unsigned.apk > release-output/badging.txt
+          "$TOOL/aapt" dump permissions release-output/Zero-Keyboard-0.1.0-alpha02-unsigned.apk > release-output/permissions.txt
+          if grep -q 'android.permission.INTERNET' release-output/permissions.txt; then exit 1; fi
+          grep -q "package: name='com.zerokeyboard.ime' versionCode='101'" release-output/badging.txt
+          JAR="$(find "$HOME/.gradle/caches/modules-2/files-2.1/com.android.tools.build/apksig/8.7.3" -name 'apksig-8.7.3.jar' -print -quit)"
+          test -f "$JAR"
+          cp "$JAR" release-output/apksig-8.7.3.jar
+          javac -encoding UTF-8 -cp "$JAR" -d release-output/classes research/release/SignRelease.java
+          cp release/identity.properties release-output/
+          cp /usr/share/common-licenses/Apache-2.0 release-output/apksig-LICENSE.txt
+          git rev-parse HEAD > release-output/source-commit.txt
+          sha256sum release-output/*.apk release-output/*.jar > release-output/checksums.sha256
+      - name: Preserve unsigned alpha and offline signing kit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zero-alpha02-unsigned-owner-signing-kit
+          if-no-files-found: warn
+          path: release-output/
+      - name: Enable hardware acceleration
+        run: |
+          test -e /dev/kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android 13 emulator integration
+        uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed # v2.34.0
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-linux-hw-accel: false
+          disable-spellchecker: true
+          script: python3 research/android/ime_probe.py --serial emulator-5554 --apk app/build/outputs/apk/debug/app-debug.apk --report runtime-results/ime-probe.json
+      - name: Preserve test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zero-android13-runtime-evidence
+          if-no-files-found: warn
+          path: |
+            runtime-results/
+            app/build/reports/
+            app/build/test-results/
+      - name: Preserve debug engineering APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zero-debug-engineering-apk-not-release
+          if-no-files-found: warn
+          path: app/build/outputs/apk/debug/app-debug.apk

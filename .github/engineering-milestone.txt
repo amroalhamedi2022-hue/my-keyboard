@@ -1,0 +1,2 @@
+2026-11-28 milestone 02: Inline Autofill, hardened model import, silence endpointing, cached glide geometry and clean local build/lint/unit tests.
+GitHub validation requested after verified local milestone. Change this marker only for deliberate engineering builds.

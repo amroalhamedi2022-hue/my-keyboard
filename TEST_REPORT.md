@@ -1,0 +1,55 @@
+# Test report — 2026-11-27
+Verified read-back of GitHub files at e36ebcc0617158f9d57130eefbbb3fda3577572d. Local copies matched Git blob hashes:
+- score.py 7396c60bd9d899a13f51c43003be4a7d855394ae
+- test_score.py e1b6b77265d12626c1ea5d79c01b630bbdf449e5
+- GeometricRanker.java 4fe568db32b42a00f89c38a586dee871a1af8596
+- KeyboardLayout.java 07d04cc57933fe3485095b693b24f01bd8fc624c
+
+Executed locally: python -m unittest discover -s research/asr -p 'test_*.py' -v -> 3 tests OK (exact mixed transcript, Latin loss, duplicate IDs). javac -encoding UTF-8 -d out GeometricRanker.java KeyboardLayout.java Smoke.java && java -ea -cp out Smoke -> PASS: 7 JVM smoke assertions. Reproduce from repo root with javac -encoding UTF-8 -d /tmp/zero-out app/src/main/java/com/zerokeyboard/ime/KeyboardLayout.java app/src/main/java/com/zerokeyboard/ime/glide/GeometricRanker.java research/glide/Smoke.java && java -ea -cp /tmp/zero-out Smoke.
+
+These are synthetic unit/smoke tests only. No model inference, no real glide traces, no Android SDK/Gradle/adb in local environment, no device test, no Android APK or Android build. Android JUnit fixtures and CI are not executed. GitHub connector supports repo writes; no new workflow dispatch action identified. Local git remote DNS failed. PR remains draft.
+
+## Batch 2
+Glide touch integration and settings authored; Android compile, dispatch and composing behavior not verified. Prior smoke results cover old pure components only. No new test pass asserted until execution evidence exists.
+
+## Batch 2 local ASR adapter tests
+Executed python -m unittest -v on test_run_whisper.py with 4 passing tests: bad stereo format, SHA-256, mono PCM duration, mixed-script JSON parsing. Synthetic test fixtures only. Local git hashes run_whisper.py 4d5d627586f0bbf4af0b9cdcfd8273c0c1dae607; test_run_whisper.py f70a66de2f852bd4decf1439b48e1d06ec4c65e5. Actual model inference, Android compile and integration still pending. Local environment javac available, Gradle/SDK not found; git remote DNS failed again. Milestone workflow trigger added, outcome not yet observed.
+
+## 2026-11-28 engineering milestone
+
+Executed with JDK 17, Android platform/build tools 35, NDK 27.2.12479018, CMake 3.22.1 and Gradle 8.9. `testDebugUnitTest`, `lintDebug`, and `assembleDebug` completed successfully. Nine JUnit cases passed with zero failures: four glide ranker, three keyboard layout and two speech endpoint cases. Lint reported zero errors and zero warnings after fixes. Seven Python ASR adapter/scoring tests and 23 JVM smoke assertions passed independently.
+
+The produced debug APK is 8.9 MB and SHA-256 `e96db00e8229a2a6855da7e23c884fa0a4ae01504c425c789b4d677a00c10292`. Archive inspection found both `arm64-v8a` and `x86_64` native voice libraries, `libc++_shared.so`, and the packaged MIT notice. This is a debug engineering artifact. It has not been installed on a device or emulator, does not constitute a signed release, and voice accuracy and runtime performance remain unverified.
+
+Batch 3: checked prior commit combined status and PR workflow runs; no results returned. Native integration authored, not Android compiled or executed. Source verification and unit tests to be recorded separately.
+
+Batch 3 local catalog smoke: javac and java -ea executed successfully, 7 assertions passed. Exact Git blob of tested ModelCatalog.java: 59d60984c9fe217547a5d65915fd6d08d02c833d, verified against repository. CatalogSmoke.java local blob 62f53240c1d2fd2a3f978a76f5808c9c6896b129. Reproduce: javac -encoding UTF-8 -d /tmp/zero-catalog app/src/main/java/com/zerokeyboard/ime/voice/ModelCatalog.java research/voice/CatalogSmoke.java && java -ea -cp /tmp/zero-catalog CatalogSmoke. Checks count, lookup for both allowlisted digests, unknown/null rejection, digest shape and non-.en names. Does not verify actual model bytes or recognition. Native/Android code remains uncompiled. Local environment command -v found javac/java only, no gradle/adb or SDK path.
+
+Batch 04: pinned upstream header read and abort_callback fields verified. LayoutSmoke.java authored; execution evidence will be appended separately. No Android/JNI tests claimed.
+
+Batch 04 local execution: javac 21.0.12.1 -encoding UTF-8 compiled LayoutProfile.java and LayoutSmoke.java. java -ea -cp out LayoutSmoke returned PASS: 9 layout assertions. Git hash-object exactly matched remote LayoutProfile.java c7330edc1fc18c78e9bff6f75c8c96858c269f58 and LayoutSmoke.java f41753d0bbc6125a9ab583ede4d30914a6ef308a. Covers split fallback, wide split geometry, left/right inset, clamped height, Arabic-Indic conversion and number row. No device layout or Android/JNI runtime claims.
+
+## Work handoff / runtime probe
+Current HEAD read-back 198a23db; prior milestone report above confirms build/lint/unit evidence from Work. Owner screenshot indicates emulator boot/ADB progress but no confirmed install or completed runtime test. Current chat environment has no adb or Android SDK/Gradle commands; remote Git DNS fails. Added debug-only fixture and ADB runner, not yet built or run against Android. Helper unit tests authored; execution not claimed here. See docs/ANDROID_RUNTIME_PROBE.md.
+
+Runtime milestone setup: verified GitHub HEAD before edits and checked prior Work handoff. Current container independently confirmed java/javac available, adb/gradle/SDK missing, GitHub git remote DNS fails. Added API33 KVM workflow and marker; no emulator run or new APK verified. Probe writes explicit failed check and captures normal synthetic-field screenshot only. No additional tests claimed executed at this point.
+
+Batch 06 local JVM execution: javac compiled PersonalLexicon.java, ClipboardHistory.java and Batch6Smoke.java; java -ea returned PASS: personal lexicon and clipboard history synthetic smoke checks. Local git blobs: 92eaf3d414e617e83ca3d34479dea050398d3f68; e242aff7ca3e664cddc533d50e74030db462500b; 24f2a36b056df6b896335b4b0e55d0c1a2a740c5. Remote read-back to verify equality. New Android source, emoji, optimized ranker not compiled or runtime-tested. No Gradle/ADB installed in current container; direct git DNS failed; no confirmed CI status at starting HEAD.
+
+Batch 06 continued: exact remote blobs for PersonalLexicon, ClipboardHistory and Batch6Smoke matched all 3 local hashes above. Local javac/java -ea executed RankerEquivalence with 600 deterministic synthetic top-K/full-ranking comparisons (200 traces, 3 K values), all passed. GeometricRanker blob 812b8237ed7165b2c79c56473bc8fde522bfaa91 matched the tested source; RankerEquivalence.java local blob a6e72ce5a27e58f81bc81a0874b325b70ffd2273. This validates pruning/heap equivalence against full ranking of the same scoring implementation, not real-word recognition accuracy, Android latency or historical floating-point equivalence. UI and expiry timer remain uncompiled on Android. No additional Android build initiated.
+
+Batch 07: local javac compiled FrequencyLexicon.java, VoiceOptions.java, Batch7Smoke.java and java returned PASS: 13 resource and voice-option checks. Local git blobs a70d5a3dabfce5a6265fdde774e8067cd0a636f8, 52a873a5d05fcf0e659fcf2f54aafad52cb6348d, 076411a63b706dd510131b6c5140ab879bd513ef. Exact remote readback to be checked. Android and JNI changes not compiled; no new APK or real model/dictionary benchmark. Local SDK/ADB/Gradle absent and git DNS failed.
+
+Batch 07 parser/options: remote readback confirmed all three blobs match local hashes above. Continuous follow-up: javac compiled exact SpeechWindow (local blob 7d9d120c64ab214d9928a3d551944ddc8e3dd709), AudioSegments 70f39c738dae7b7b051bb29182f0d396229a7b24, SegmentedDecoder d8014ddb6297e33e926424c559b495948816f3de and ContinuousSmoke 94eaebdbd3d25b70141fc1ab5d1d3c7aef513beb. java returned PASS: 17 segmentation/queue checks, synthetic tone/silence and fake decoder only. No real ASR WER, latency, Android runtime or JNI build claim. Re-run CI smoke at next deliberate milestone.
+
+Continuous follow-up: remote readback verified all four exact blobs (SpeechWindow, AudioSegments, SegmentedDecoder, ContinuousSmoke) against local hashes above. Tools follow-up: javac compiled ThemeTokens, EmojiCatalog, ClipboardHistory and Tools7Smoke; java returned PASS: 52 theme/emoji/privacy checks. Local git blobs 3fcfb1838e87fd9c153a0e4b9306dacfe1474c65, 6cc8446c487d616653f707ab944f4c001bbde6f6, 441450196481e16e1f48fda22d5f98bac6d88cdc, 8d34f81ca230ec558f1243699a22485bc722834a. Pure JVM only. New Android UI, microphone cleanup, native compilation and actual runtime remain pending.
+
+Batch 07 final host check: exact remote hashes of ThemeTokens, EmojiCatalog, ClipboardHistory and Tools7Smoke match the local tested blobs. Reran all 3 new suites together: 13 + 17 + 52 = 82 checks passed. javac -h generated JNI header from exact NativeWhisper.java blob 8c0cb0f85e6be85c3cbfe9c412dd1a91bb23759f; inspected decode (JNIEnv*, jclass, jstring, jfloatArray, jint, jint, jlong, jint) returning jbyteArray, abort and releaseSession (JNIEnv*, jclass, jlong) returning void, matching bridge declarations. This is Java compilation/signature inspection, not native or Android compilation. Added synthetic emoji/clipboard runtime checks; unexecuted. New opt-in labeled PR trigger allows one deliberate runtime milestone without building on each synchronize event. No confirmed new CI result at this checkpoint.
+
+Alpha milestone: fetched actual GitHub run 46128018484/job 140926828837. Failure at SDK setup (Warning: Failed to find package 'tools'); all compiler/runtime steps skipped; no APK produced. Fixed workflow source to use runner SDK and pinned packages. Added release identity, private owner key backup and offline signing utility; APK signing and new Android build not yet executed. New caps lock, punctuation and repeat delete source not device-tested.
+
+Alpha01 evidence: run 46128896895, job 140929510637, BUILD SUCCESSFUL in 1m 58s. All smoke steps, assembleDebug, assembleRelease, lintDebug and testDebugUnitTest step succeeded. APK permission and unsigned release checks passed. Downloaded artifact 15256443316 and matched hashes. Signed owner APK verified with ApkVerifier (expected certificate SHA256) and ZIP integrity; signed APK SHA256 7bf94726c56606472b80648118d3317deede801e18f07fcef4b38e0eb589ecea. Emulator boot completed, install command returned success, ime enable returned 255, so no functional UI assertions completed. Stderr was not logged by prior probe. New registration wait and failure diagnostics authored but untested on device. No new build.
+
+Alpha02: owner screenshots confirm Alpha01 IME is visible in a real notes application and settings opens; no actual typed text or measured accuracy shown. Compact UX and input changes authored, CI and signed update pending.
+
+Hybrid P0: local javac + java executed HybridSmoke: PASS 15 space gesture checks. Source blob cf319df1fd2cbc9f244d7eca2576a9a76645100e; smoke cb002fc0ee3322248b9ab3c41097216a849340c1. Android wiring, toolbar and editor undo/redo still unverified. Alpha02 build underway at earlier SHA; no new build marker for hybrid changes.
