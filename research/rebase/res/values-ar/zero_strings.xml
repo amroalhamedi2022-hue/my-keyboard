@@ -9,4 +9,6 @@
     <string name="zero_voice_disabled">الإملاء الصوتي متوقف. يمكنك تفعيله من إعدادات الصوت والكتابة بالسحب.</string>
     <string name="zero_voice_model_missing">نموذج الإملاء الصوتي غير متاح. راجع إعدادات الصوت والكتابة بالسحب.</string>
     <string name="zero_voice_model_fallback">يُستخدم نموذج Tiny المضمّن لأن نموذج Base غير مثبت.</string>
+    <string name="zero_delete_saved_clips">حذف عناصر حافظة لوحة المفاتيح</string>
+    <string name="zero_delete_saved_clips_message">هل تريد حذف العناصر المحفوظة والمثبّتة من سجل حافظة لوحة زيرو؟</string>
 </resources>

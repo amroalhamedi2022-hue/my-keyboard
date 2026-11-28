@@ -108,9 +108,34 @@ def voice_smoke(out, checks):
     check_text("zero_probe_normal", "qwضa")
     checks.append("bundled model prepares, microphone capture starts on explicit tap and Discard preserves text")
 
+def transcription_smoke(out, checks, wav_path, port):
+    from emulator_audio import replay_wav
+
+    touch_node(wait(microphone))
+    wait(lambda: find_node(lambda n: n.get("text", "").startswith("Recording")), seconds=90)
+    started = time.monotonic()
+    replay_wav(wav_path, port)
+    expected = "what your country can do for you"
+
+    def transcript():
+        node = field("zero_probe_normal")
+        text = "" if node is None else node.get("text", "").casefold()
+        return text if expected in " ".join(re.findall(r"[a-z]+", text)) else None
+
+    inserted = wait(transcript, seconds=90)
+    (out / "english-dictation.json").write_text(json.dumps({
+        "editor_text": inserted,
+        "replay_to_observed_insertion_seconds": round(time.monotonic() - started, 3),
+        "required_phrase": expected,
+    }, indent=2))
+    snapshot(out, "voice-inserted")
+    checks.append("public English WAV decoded through Android microphone and inserted through the IME")
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--candidate",type=Path,required=True);p.add_argument("--fixture",type=Path,required=True);p.add_argument("--out",type=Path,required=True)
+    p.add_argument("--english-wav", type=Path)
+    p.add_argument("--emulator-grpc-port", type=int, default=8554)
     a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True);result={"checks":[]}
     try:
         adb("install","-r",str(a.fixture));adb("install","-r",str(a.candidate))
@@ -140,6 +165,8 @@ def main():
         wait(lambda:(lambda n:n is not None and n.get("text","").lower()=="qwضa")(field("zero_probe_normal")))
         result["checks"].append("switch back to English")
         voice_smoke(a.out, result["checks"])
+        if a.english_wav:
+            transcription_smoke(a.out, result["checks"], a.english_wav, a.emulator_grpc_port)
         focus("zero_probe_password");snapshot(a.out,"password")
         assert microphone() is None
         result["checks"].append("voice toolbar action hidden in password field")

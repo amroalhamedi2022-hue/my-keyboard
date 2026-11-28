@@ -64,8 +64,8 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {
         }catch(RuntimeException e){return false;}
     }
     private void requestMicrophone(){
-        cancelVoice(); Intent i=new Intent(this,VoiceSetupActivity.class); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        i.putExtra(VoiceSetupActivity.QUICK_MIC, true);
+        cancelVoice();
+        Intent i = new Intent(this, VoicePermissionActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try{startActivity(i);}catch(android.content.ActivityNotFoundException e){notice(R.string.zero_voice_engine_unavailable);}
     }
     private void notice(int message) { Toast.makeText(this, message, Toast.LENGTH_LONG).show(); }

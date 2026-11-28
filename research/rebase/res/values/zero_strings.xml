@@ -9,4 +9,6 @@
     <string name="zero_voice_disabled">Offline voice is off. To enable it, open Zero Voice &amp; Glide in settings.</string>
     <string name="zero_voice_model_missing">The offline voice model is unavailable. Check Zero Voice &amp; Glide in settings.</string>
     <string name="zero_voice_model_fallback">Using the included Tiny model because Base is missing.</string>
+    <string name="zero_delete_saved_clips">Delete saved keyboard clips</string>
+    <string name="zero_delete_saved_clips_message">Delete saved and pinned items from Zero Keyboard’s clipboard history?</string>
 </resources>

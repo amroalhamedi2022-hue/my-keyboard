@@ -14,16 +14,10 @@ import java.util.concurrent.*;
 
 public final class VoiceSetupActivity extends Activity {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
-    private ModelStore models;private SharedPreferences prefs;private TextView status;private boolean quickMic;
-    static final String QUICK_MIC = "quick_mic";
+    private ModelStore models;private SharedPreferences prefs;private TextView status, modelDetails;
     private static final int MICROPHONE_REQUEST = 81;
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
-        quickMic=getIntent().getBooleanExtra(QUICK_MIC,false);
-        if (quickMic) {
-            if (state == null) askMicrophone();
-            return;
-        }
         Context storage=getApplicationContext();
         prefs=storage.getSharedPreferences("zero_settings",MODE_PRIVATE);models=new ModelStore(storage);
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(20),dp(16),dp(20),dp(20));
@@ -42,6 +36,8 @@ public final class VoiceSetupActivity extends Activity {
         button(root,"Advanced voice settings",()->advanced.setVisibility(
                 advanced.getVisibility()==android.view.View.VISIBLE ? android.view.View.GONE : android.view.View.VISIBLE));
         root.addView(advanced);
+        modelDetails = new TextView(this);
+        advanced.addView(modelDetails);
         toggle(advanced,"Use Base model","voice_base",false);
         choice(advanced,"CPU threads",new String[]{"1","2","3","4"},"voice_threads",4,1);
         TextView silence=new TextView(this);advanced.addView(silence);SeekBar duration=new SeekBar(this);duration.setMax(26);
@@ -77,20 +73,19 @@ public final class VoiceSetupActivity extends Activity {
                 :!models.available(selected)&&!fallback?"Offline voice model unavailable."
                 :!granted?"Allow microphone access once.":"Ready to dictate. Return to your text field and tap the microphone.";
         status.setText(fallback ? ready+"\n"+getString(R.string.zero_voice_model_fallback) : ready);
+        modelDetails.setText("Tiny: "+modelStatus(ModelCatalog.TINY)+" | Base: "+modelStatus(ModelCatalog.BASE));
+    }
+    private String modelStatus(ModelCatalog model){
+        return models.installed(model)?"installed":models.bundled(model)?"included offline":"not installed";
     }
     private void askMicrophone(){
-        if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED){if(quickMic)finish();else refresh();return;}
+        if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED){refresh();return;}
         requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MICROPHONE_REQUEST);
     }
     @Override protected void onResume(){super.onResume();refresh();}
     @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){
         super.onRequestPermissionsResult(request,permissions,results);
-        if (request != MICROPHONE_REQUEST) return;
-        if (!quickMic) { refresh(); return; }
-        final boolean granted = results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED;
-        Toast.makeText(this, granted ? R.string.zero_voice_permission_granted
-                : R.string.zero_voice_permission_denied, Toast.LENGTH_LONG).show();
-        finish();
+        if (request == MICROPHONE_REQUEST) refresh();
     }
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request!=82||result!=RESULT_OK||data==null||data.getData()==null)return;Uri uri=data.getData();status.setText("Verifying model…");worker.execute(()->{try{models.install(uri);runOnUiThread(()->{if(!isDestroyed())refresh();});}catch(Exception e){runOnUiThread(()->{if(!isDestroyed())status.setText("Model rejected: not a verified supported model");});}});}
     @Override protected void onDestroy(){worker.shutdown();super.onDestroy();}

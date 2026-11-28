@@ -143,6 +143,54 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
             "fun getHistoryEntry(position: Int) = if (allowsClipboardHistory()) clipboardDao?.getAt(position) else null")
     replace(clipboard, "fun getHistoryEntryContent(id: Long) = clipboardDao?.get(id)",
             "fun getHistoryEntryContent(id: Long) = if (allowsClipboardHistory()) clipboardDao?.get(id) else null")
+    replace(clipboard, "        clipboardDao?.togglePinned(id)",
+            "        if (allowsClipboardHistory()) clipboardDao?.togglePinned(id)")
+    clipboard_dao = java / "database/ClipboardDao.kt"
+    replace(clipboard_dao, "    fun isPinned(index: Int) = cache[index].isPinned",
+            "    fun isPinned(index: Int) = cache.getOrNull(index)?.isPinned")
+    replace(clipboard_dao, "    fun getAt(index: Int) = cache[index]",
+            "    fun getAt(index: Int) = cache.getOrNull(index)")
+    replace(clipboard_dao, "    fun get(id: Long) = cache.first { it.id == id }",
+            "    fun get(id: Long) = cache.firstOrNull { it.id == id }")
+    replace(clipboard_dao, "        val entry = cache.first { it.id == id }",
+            "        val entry = get(id) ?: return")
+    replace(clipboard_dao, """    fun clear() {
+        if (count() == 0) return
+        cache.clear()
+        listener?.onClipsRemoved(0, count())
+        db.writableDatabase.delete(TABLE, null, null)
+    }""", """    fun clear() {
+        val previousCount = count()
+        db.writableDatabase.delete(TABLE, null, null)
+        cache.clear()
+        if (previousCount > 0) listener?.onClipsRemoved(0, previousCount)
+    }""")
+    preferences = app / "src/main/java/helium314/keyboard/settings/screens/PreferencesScreen.kt"
+    replace(preferences, "import androidx.compose.material3.Surface\n", """import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import helium314.keyboard.settings.dialogs.ConfirmationDialog
+import helium314.keyboard.settings.preferences.Preference
+""")
+    replace(preferences, """        if (clipboardHistoryEnabled) Settings.PREF_CLIPBOARD_HISTORY_PINNED_FIRST else null
+""", """        if (clipboardHistoryEnabled) Settings.PREF_CLIPBOARD_HISTORY_PINNED_FIRST else null,
+        "zero_delete_saved_clips"
+""")
+    replace(preferences, "    Setting(context, Settings.PREF_CLIPBOARD_HISTORY_PINNED_FIRST,",
+            """    Setting(context, "zero_delete_saved_clips", R.string.zero_delete_saved_clips) { setting ->
+        val context = LocalContext.current
+        val confirm = rememberSaveable { mutableStateOf(false) }
+        Preference(name = setting.title, onClick = { confirm.value = true })
+        if (confirm.value) ConfirmationDialog(
+            onDismissRequest = { confirm.value = false },
+            onConfirmed = { ClipboardDao.getInstance(context)?.clear() },
+            title = { Text(setting.title) },
+            content = { Text(stringResource(R.string.zero_delete_saved_clips_message)) },
+            confirmButtonText = stringResource(R.string.delete)
+        )
+    },
+    Setting(context, Settings.PREF_CLIPBOARD_HISTORY_PINNED_FIRST,""")
     keyboard = app / "src/main/java/helium314/keyboard/keyboard"
     switcher = keyboard / "KeyboardSwitcher.java"
     replace(switcher, """    @Override
@@ -158,6 +206,13 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
     history_view = keyboard / "clipboard/ClipboardHistoryView.kt"
     replace(history_view, "        keyboardActionListener.onTextInput(clipContent?.text)",
             "        clipContent?.let { keyboardActionListener.onTextInput(it.text) }")
+    clip_adapter = keyboard / "clipboard/ClipboardAdapter.kt"
+    replace(clip_adapter, "keyEventListener.onKeyDown(view.tag as Long)",
+            "(view.tag as? Long)?.let(keyEventListener::onKeyDown)")
+    replace(clip_adapter, "keyEventListener.onKeyUp(view.tag as Long)",
+            "(view.tag as? Long)?.let(keyEventListener::onKeyUp)")
+    replace(clip_adapter, "            clipboardHistoryManager?.toggleClipPinned(view.tag as Long)",
+            "            val id = view.tag as? Long ?: return false\n            clipboardHistoryManager?.toggleClipPinned(id)")
     state = keyboard / "internal/KeyboardState.kt"
     replace(state, "        fun setClipboardKeyboard()",
             "        fun canShowClipboardHistory(): Boolean\n        fun setClipboardKeyboard()")

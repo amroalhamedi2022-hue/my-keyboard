@@ -20,12 +20,15 @@ replace(app/"build.gradle.kts", 'create("debugNoMinify") { // for faster builds 
 replace(app/"build.gradle.kts", 'create("runTests") { // build variant for running tests on CI that skips tests known to fail', 'create("runTests") { // build variant for running tests on CI that skips tests known to fail\n            matchingFallbacks += listOf("debug")')
 replace(app/"build.gradle.kts", 'create("nouserlib") { // same as release, but does not allow the user to provide a library', 'create("nouserlib") { // same as release, but does not allow the user to provide a library\n            matchingFallbacks += listOf("release")')
 replace(app/"build.gradle.kts","dependencies {",'dependencies {\n    implementation(project(":zero-voice"))')
-for name in ["ZeroImeService.java","VoiceSetupActivity.java"]:
+for name in ["ZeroImeService.java","VoiceSetupActivity.java","VoicePermissionActivity.java"]:
     shutil.copy2(templates/name,app/"src/main/java/com/zerokeyboard/ime"/name)
 manifest=app/"src/main/AndroidManifest.xml"
 replace(manifest,'    <uses-permission android:name="android.permission.VIBRATE" />','    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />')
 replace(manifest,"        <!-- Activities -->",'''        <!-- Activities -->
-        <activity android:name="com.zerokeyboard.ime.VoiceSetupActivity" android:exported="false" />''')
+        <activity android:name="com.zerokeyboard.ime.VoiceSetupActivity" android:exported="false" />
+        <activity android:name="com.zerokeyboard.ime.VoicePermissionActivity"
+            android:excludeFromRecents="true" android:exported="false" android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />''')
 java=app/"src/main/java/helium314/keyboard/latin"
 replace(java/"InputAttributes.java","mShouldShowVoiceInputKey = false;",'mShouldShowVoiceInputKey = false;',2)
 # Replace only the final assignment, not the early invalid-editor branch.
