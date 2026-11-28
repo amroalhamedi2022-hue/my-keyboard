@@ -1,0 +1,181 @@
+name: Zero mature core candidate
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: zero-mature-core-candidate
+  cancel-in-progress: false
+jobs:
+  candidate:
+    if: github.event_name != 'pull_request' || ((github.event.label.name == 'zero-mature-core-candidate' || github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-owner-release') && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: HeliBorg/HeliBoard
+          ref: f8ec91a982835911cc224fa99434c3396d4cd562
+          path: upstream/heliboard
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install pinned Android packages
+        shell: bash
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$MANAGER" ]; then MANAGER="$(find "$SDK/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"; fi
+          test -x "$MANAGER"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          "$MANAGER" --sdk_root="$SDK" --licenses < <(yes) >/dev/null
+          "$MANAGER" --sdk_root="$SDK" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.0.13004108' 'cmake;3.22.1'
+      - name: Open gesture admission smoke
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-gate research/rebase/glide/GestureGate.java research/rebase/glide/GestureGateSmoke.java
+          java -cp /tmp/zero-gate GestureGateSmoke
+      - name: Prepare Zero engine source
+        run: |
+          python3 research/rebase/audit_baseline.py upstream/heliboard candidate-results
+          python3 research/rebase/prepare_candidate.py upstream/heliboard .
+          if [ "${{ github.event.label.name }}" = 'zero-mature-voice-candidate' ] || [ "${{ github.event.label.name }}" = 'zero-mature-glide-candidate' ] || [ "${{ github.event.label.name }}" = 'zero-mature-owner-release' ]; then
+            python3 research/rebase/attach_voice.py upstream/heliboard .
+            if [ "${{ github.event.label.name }}" = 'zero-mature-glide-candidate' ] || [ "${{ github.event.label.name }}" = 'zero-mature-owner-release' ]; then
+              python3 research/rebase/attach_glide.py upstream/heliboard .
+            fi
+            cp upstream/heliboard/app/src/main/java/com/zerokeyboard/ime/ZeroImeService.java /tmp/zero-production-service.java
+            if [ "${{ github.event.label.name }}" != 'zero-mature-owner-release' ]; then
+              python3 research/rebase/add_geometry_probe.py upstream/heliboard
+            fi
+          fi
+          python3 research/rebase/check_prepared.py upstream/heliboard
+          git -C upstream/heliboard diff --check
+          git -C upstream/heliboard diff > candidate-results/upstream-changes.patch
+          git rev-parse HEAD > candidate-results/zero-source-commit.txt
+          cp upstream/heliboard/ZERO-PROVENANCE.txt candidate-results/
+      - name: Compile non-distribution candidate
+        if: github.event.label.name != 'zero-mature-owner-release'
+        working-directory: upstream/heliboard
+        run: ./gradlew :app:assembleDebugNoMinify --no-daemon
+      - name: Verify candidate APK permissions and identity
+        if: github.event.label.name != 'zero-mature-owner-release'
+        shell: bash
+        run: |
+          APK="$(find upstream/heliboard/app/build/outputs/apk/debugNoMinify -name '*.apk' -print -quit)"
+          test -f "$APK"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$AAPT" dump badging "$APK" > candidate-results/badging.txt
+          "$AAPT" dump permissions "$APK" > candidate-results/permissions.txt
+          grep -q "package: name='com.zerokeyboard.ime.debug' versionCode='102'" candidate-results/badging.txt
+          ! grep -E 'android.permission.(INTERNET|READ_CONTACTS)' candidate-results/permissions.txt
+          sha256sum "$APK" > candidate-results/apk.sha256
+          cp "$APK" candidate-results/zero-mature-core-debug-evaluation.apk
+      - name: Download synthetic editor fixture from verified Alpha02 build
+        if: github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate'
+        uses: actions/download-artifact@v4
+        with:
+          name: zero-debug-engineering-apk-not-release
+          run-id: 46130671231
+          github-token: ${{ github.token }}
+          path: fixture
+      - name: Enable KVM for actual touch tests
+        if: github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate'
+        run: |
+          test -e /dev/kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Real mature keyboard touch smoke
+        if: github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate'
+        uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-linux-hw-accel: false
+          script: python3 research/rebase/device_probe.py --candidate candidate-results/zero-mature-core-debug-evaluation.apk --fixture "$(find fixture -name '*.apk' -print -quit)" --out candidate-results/runtime
+      - name: Retrieve already passed bilingual touch gate
+        if: github.event.label.name == 'zero-mature-owner-release'
+        uses: actions/download-artifact@v4
+        with:
+          name: zero-mature-core-evaluation-not-release
+          run-id: 46138548880
+          github-token: ${{ github.token }}
+          path: previous-gate
+      - name: Validate prior device test evidence for release-only retry
+        if: github.event.label.name == 'zero-mature-owner-release'
+        run: |
+          test "$(cat previous-gate/zero-source-commit.txt)" = e342faa360c38234d6025248532874a84985ac4d
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("previous-gate/runtime/report.json").read_text())
+          assert "error" not in r, r
+          expected={"three English real touches","delete real touch","mixed Arabic/English touches","switch back to English","password field focused; screenshot for manual privacy review"}
+          assert expected.issubset(r["checks"]),r
+          print("PASS prior bilingual touch evidence; only build configuration changed")
+          PY
+      - name: Prepare owner unsigned release only after real bilingual touch gate
+        if: github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-owner-release'
+        shell: bash
+        run: |
+          cp /tmp/zero-production-service.java upstream/heliboard/app/src/main/java/com/zerokeyboard/ime/ZeroImeService.java
+          if grep -q 'zero-eval-geometry' upstream/heliboard/app/src/main/java/com/zerokeyboard/ime/ZeroImeService.java; then exit 1; fi
+          # Non-minified release for initial migration, NOT a debug APK. Avoid JNI shrinker issues.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("upstream/heliboard/app/build.gradle.kts")
+          s=p.read_text()
+          old="release {\n            isMinifyEnabled = true"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,"release {\n            isMinifyEnabled = false"))
+          PY
+          (cd upstream/heliboard && ./gradlew :app:assembleRelease --no-daemon)
+          if [ -f previous-gate/runtime/report.json ]; then cp previous-gate/runtime/report.json candidate-results/prior-touch-report.json; fi
+          mkdir -p owner-release/classes
+          APK="$(find upstream/heliboard/app/build/outputs/apk/release -name '*unsigned.apk' -print -quit)"
+          test -f "$APK"
+          TOOL="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOL/zipalign" -P 16 -f 4 "$APK" owner-release/Zero-Keyboard-0.2.0-engine-preview-unsigned.apk
+          "$TOOL/zipalign" -c -P 16 4 owner-release/Zero-Keyboard-0.2.0-engine-preview-unsigned.apk
+          "$TOOL/aapt" dump badging owner-release/*.apk > owner-release/badging.txt
+          "$TOOL/aapt" dump permissions owner-release/*.apk > owner-release/permissions.txt
+          grep -q "package: name='com.zerokeyboard.ime' versionCode='102'" owner-release/badging.txt
+          ! grep -E 'android.permission.(INTERNET|READ_CONTACTS)' owner-release/permissions.txt
+          JAR="$(find "$HOME/.gradle/caches/modules-2/files-2.1/com.android.tools.build/apksig" -name 'apksig-8.10.1.jar' -print -quit)"
+          test -f "$JAR"
+          cp "$JAR" owner-release/
+          javac -encoding UTF-8 -cp "$JAR" -d owner-release/classes research/release/SignRelease.java
+          cp upstream/heliboard/LICENSE owner-release/LICENSE
+          cp upstream/heliboard/ZERO-PROVENANCE.txt owner-release/
+          git rev-parse HEAD > owner-release/source-commit.txt
+          (cd owner-release && sha256sum *.apk *.jar > checksums.sha256)
+          # Provide complete corresponding modified source and build scripts for the GPL derivative.
+          tar -czf owner-release/zero-mature-corresponding-source.tar.gz --exclude=.git --exclude=.gradle --exclude=.cxx --exclude=build --exclude=local.properties --exclude=zero-staged-voice -C upstream/heliboard .
+      - name: Preserve unsigned owner kit (not signed)
+        if: always() && (github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-owner-release')
+        uses: actions/upload-artifact@v4
+        with:
+          name: zero-mature-owner-unsigned-kit
+          path: owner-release/
+          if-no-files-found: warn
+      - name: Preserve candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zero-mature-core-evaluation-not-release
+          path: candidate-results/
+          if-no-files-found: warn
