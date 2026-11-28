@@ -27,7 +27,7 @@ public final class SetupActivity extends Activity {
   dark=(getResources().getConfiguration().uiMode&android.content.res.Configuration.UI_MODE_NIGHT_MASK)==android.content.res.Configuration.UI_MODE_NIGHT_YES;paper=dark?0xFF101820:0xFFF2F5F9;card=dark?0xFF1D2935:0xFFFFFFFF;ink=dark?0xFFF0F5FA:0xFF172639;secondary=dark?0xFFB7C4D3:0xFF526579;accent=dark?0xFF9BD3FF:0xFF1458B0;
   page=new LinearLayout(this);page.setOrientation(LinearLayout.VERTICAL);page.setBackgroundColor(paper);page.setPadding(dp(16),dp(16),dp(16),dp(24));
   LinearLayout root=page;
-  TextView title=new TextView(this); title.setText(R.string.app_name); title.setTextSize(32);title.setTextColor(ink);title.setTypeface(android.graphics.Typeface.create("sans-serif-medium",0)); root.addView(title);
+  TextView title=new TextView(this); title.setText(R.string.app_name); title.setTextSize(32);title.setTextColor(ink);title.setTypeface(android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL)); root.addView(title);
   TextView info=new TextView(this); info.setText("Offline by design · Arabic + English\nOwner preview 0.1.0-alpha02");info.setTextColor(secondary); root.addView(info);
   Button enable=new Button(this); enable.setText(R.string.enable_keyboard); enable.setOnClickListener(v->startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))); root.addView(enable);
   Button select=new Button(this); select.setText(R.string.choose_keyboard); select.setOnClickListener(v->getSystemService(InputMethodManager.class).showInputMethodPicker()); root.addView(select);
