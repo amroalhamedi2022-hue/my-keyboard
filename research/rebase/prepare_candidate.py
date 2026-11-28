@@ -26,8 +26,8 @@ def prepare(upstream, zero):
     for before,after in [
         ('applicationId = "helium314.keyboard"','applicationId = "com.zerokeyboard.ime"'),
         ('minSdk = 21','minSdk = 29'),
-        ('versionCode = 3603','versionCode = 102'),
-        ('versionName = "3.6"','versionName = "0.2.0-engine-preview"'),
+        ('versionCode = 3603','versionCode = 104'),
+        ('versionName = "3.6"','versionName = "0.2.2-engine-preview"'),
         ('listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")','listOf("arm64-v8a", "x86_64")'),
     ]:
         replace(gradle,before,after)
@@ -39,7 +39,11 @@ def prepare(upstream, zero):
     replace(manifest,'android:defaultToDeviceProtectedStorage="true"','android:defaultToDeviceProtectedStorage="false"')
     replace(manifest,'android:directBootAware="true"','android:directBootAware="false"',2)
     replace(manifest,'    <uses-permission android:name="android.permission.READ_CONTACTS" />\n','')
-    replace(manifest,'android:label="@string/english_ime_name"','android:label="Zero Keyboard"',2)
+    # Keep label resource references: WelcomeWizard previously read labelRes, which is zero for literal labels.
+    replace(app/"src/main/res/values/donottranslate.xml",'<string name="english_ime_name" translatable="false">HeliBoard</string>','<string name="english_ime_name" translatable="false">Zero Keyboard</string>')
+    replace(app/"src/main/res/values/strings.xml",'<string name="ime_settings">HeliBoard Settings</string>','<string name="ime_settings">Zero Keyboard Settings</string>')
+    wizard=app/"src/main/java/helium314/keyboard/settings/WelcomeWizard.kt"
+    replace(wizard,"val appName = stringResource(ctx.applicationInfo.labelRes)",'val appName = ctx.applicationInfo.loadLabel(ctx.packageManager).toString().ifBlank { "Zero Keyboard" }')
     wrapper = app / "src/main/java/com/zerokeyboard/ime/ZeroImeService.java"
     wrapper.parent.mkdir(parents=True,exist_ok=True)
     wrapper.write_text("""// SPDX-License-Identifier: GPL-3.0-only
@@ -47,6 +51,84 @@ package com.zerokeyboard.ime;
 /** Keep Android's existing IME component identity across the engine change. */
 public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
 """,encoding="utf-8")
+    # Share the existing editor and plain-text policies with the mature clipboard.
+    shutil.copy2(zero/"app/src/main/java/com/zerokeyboard/ime/EditorPolicy.java", wrapper.parent/"EditorPolicy.java")
+    (wrapper.parent/"tools").mkdir(exist_ok=True)
+    shutil.copy2(zero/"app/src/main/java/com/zerokeyboard/ime/tools/ClipboardHistory.java",
+                 wrapper.parent/"tools/ClipboardHistory.java")
+    clipboard = java / "ClipboardHistoryManager.kt"
+    replace(clipboard, "import android.text.InputType\n", "")
+    replace(clipboard, "import android.text.TextUtils\n", "")
+    replace(clipboard, "import helium314.keyboard.latin.common.isValidNumber\n", "")
+    replace(clipboard, "import helium314.keyboard.latin.utils.InputTypeUtils\n",
+            "import com.zerokeyboard.ime.EditorPolicy\nimport com.zerokeyboard.ime.tools.ClipboardHistory\n")
+    replace(clipboard,
+            "    private fun fetchPrimaryClip() {\n        val clipData = clipboardManager.primaryClip ?: return",
+            """    fun allowsClipboardHistory() = allowsClipboardPreview(latinIME.currentInputEditorInfo)
+
+    private fun allowsClipboardPreview(editorInfo: EditorInfo?) =
+        EditorPolicy.from(editorInfo).allowPersonalization && !latinIME.mSettings.current.mIncognitoModeEnabled
+
+    private fun fetchPrimaryClip() {
+        if (!allowsClipboardHistory()) return
+        val clipData = clipboardManager.primaryClip ?: return
+        if (ClipboardManagerCompat.getClipSensitivity(clipData.description) == true) return""")
+    replace(clipboard, """            val content = clipItem.coerceToText(latinIME)
+            if (TextUtils.isEmpty(content)) return
+            clipboardDao?.addClip(timeStamp, false, content.toString())""",
+            """            val content = clipItem.text?.toString() ?: return
+            if (!ClipboardHistory.acceptable(content, false)) return
+            clipboardDao?.addClip(timeStamp, false, content)""")
+    replace(clipboard, """    private fun isClipSensitive(inputType: Int): Boolean {
+        ClipboardManagerCompat.getClipSensitivity(clipboardManager.primaryClip?.description)?.let { return it }
+        return InputTypeUtils.isPasswordInputType(inputType)
+    }
+
+""", "")
+    replace(clipboard, "        if (!latinIME.mSettings.current.mSuggestClipboardContent) return null",
+            "        if (!allowsClipboardPreview(editorInfo) || !latinIME.mSettings.current.mSuggestClipboardContent) return null")
+    replace(clipboard, "        val clipItem = clipData.getItemAt(0) ?: return null",
+            """        if (ClipboardManagerCompat.getClipSensitivity(clipData.description) == true) return null
+        val clipItem = clipData.getItemAt(0) ?: return null""")
+    replace(clipboard, """        val content = clipItem.coerceToText(latinIME)
+        if (TextUtils.isEmpty(content)) return null
+        val inputType = editorInfo?.inputType ?: InputType.TYPE_NULL
+        if (InputTypeUtils.isNumberInputType(inputType) && !content.isValidNumber()) return null""",
+            """        val content = clipItem.text?.toString() ?: return null
+        if (!ClipboardHistory.acceptable(content, false)) return null""")
+    replace(clipboard, """        textView.text = (if (isClipSensitive(inputType)) "*".repeat(content.length) else content)
+            .take(200) // truncate displayed text for performance reasons""",
+            """        textView.text = content.take(200)""")
+    replace(clipboard, "        textView.setOnClickListener {",
+            """        textView.setOnClickListener {
+            if (!allowsClipboardHistory()) return@setOnClickListener""")
+    replace(clipboard, "fun getHistorySize() = clipboardDao?.count() ?: 0",
+            "fun getHistorySize() = if (allowsClipboardHistory()) clipboardDao?.count() ?: 0 else 0")
+    replace(clipboard, "fun getHistoryEntry(position: Int) = clipboardDao?.getAt(position)",
+            "fun getHistoryEntry(position: Int) = if (allowsClipboardHistory()) clipboardDao?.getAt(position) else null")
+    replace(clipboard, "fun getHistoryEntryContent(id: Long) = clipboardDao?.get(id)",
+            "fun getHistoryEntryContent(id: Long) = if (allowsClipboardHistory()) clipboardDao?.get(id) else null")
+    keyboard = app / "src/main/java/helium314/keyboard/keyboard"
+    switcher = keyboard / "KeyboardSwitcher.java"
+    replace(switcher, """    @Override
+    public void setClipboardKeyboard() {""",
+            """    @Override
+    public boolean canShowClipboardHistory() {
+        return mLatinIME.getClipboardHistoryManager().allowsClipboardHistory();
+    }
+
+    @Override
+    public void setClipboardKeyboard() {
+        if (!canShowClipboardHistory()) return;""")
+    history_view = keyboard / "clipboard/ClipboardHistoryView.kt"
+    replace(history_view, "        keyboardActionListener.onTextInput(clipContent?.text)",
+            "        clipContent?.let { keyboardActionListener.onTextInput(it.text) }")
+    state = keyboard / "internal/KeyboardState.kt"
+    replace(state, "        fun setClipboardKeyboard()",
+            "        fun canShowClipboardHistory(): Boolean\n        fun setClipboardKeyboard()")
+    replace(state, "    private fun setClipboardKeyboard() {",
+            """    private fun setClipboardKeyboard() {
+        if (!mSwitchActions.canShowClipboardHistory()) return""")
     defaults = java / "settings/Defaults.kt"
     for key,value in {
         "PREF_AUTO_CORRECTION":"false","PREF_SUGGEST_CLIPBOARD_CONTENT":"false",
@@ -129,7 +211,6 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
     # Copy the voice integration source into a separate staged module, not the candidate APK yet.
     staged=upstream/"zero-staged-voice"
     shutil.copytree(zero/"app/src/main/java/com/zerokeyboard/ime/voice",staged/"java/com/zerokeyboard/ime/voice")
-    shutil.copy2(zero/"app/src/main/java/com/zerokeyboard/ime/EditorPolicy.java",staged/"java/com/zerokeyboard/ime/EditorPolicy.java")
     shutil.copytree(zero/"app/src/main/cpp",staged/"cpp")
     # Build-time source license and exact provenance accompany this candidate.
     (upstream/"ZERO-PROVENANCE.txt").write_text(
@@ -142,6 +223,8 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
     assert "android.permission.INTERNET" not in permissions
     assert "android.permission.READ_CONTACTS" not in permissions
     assert root.find("application").get(NS+"allowBackup")=="false"
+    assert root.find("application").get(NS+"label")=="@string/english_ime_name"
+    assert "stringResource(ctx.applicationInfo.labelRes)" not in wizard.read_text()
     assert root.find("application").get(NS+"defaultToDeviceProtectedStorage")=="false"
     assert root.find("application").get(NS+"directBootAware")=="false"
     assert any(n.get(NS+"name")==PACKAGE+".ZeroImeService" for n in root.findall("application/service"))

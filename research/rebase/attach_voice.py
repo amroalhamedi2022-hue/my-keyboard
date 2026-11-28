@@ -48,7 +48,5 @@ replace(main,"                if (JniUtils.sHaveGestureLib)",'''                
                     icon = R.drawable.ic_settings_gesture
                 ) { NextScreenIcon() }
                 if (JniUtils.sHaveGestureLib)''')
-replace(app/"src/main/res/values/strings.xml",'<string name="ime_settings">HeliBoard Settings</string>','<string name="ime_settings">Zero Keyboard Settings</string>')
-replace(app/"src/main/res/values/donottranslate.xml",'<string name="english_ime_name" translatable="false">HeliBoard</string>','<string name="english_ime_name" translatable="false">Zero Keyboard</string>')
 with (upstream/"ZERO-PROVENANCE.txt").open("a") as f:f.write("Voice adapter enabled: Zero local JNI library, private model storage, editor-bound recording and preview. Runtime verification pending.\n")
 print("Zero local voice module and service adapter attached.")

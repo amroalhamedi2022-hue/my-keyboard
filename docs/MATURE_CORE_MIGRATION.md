@@ -8,3 +8,18 @@ Run 46137338637: combined mature core + voice + open glide compiled, APK 55,286,
 Run 46138548880: combined candidate compiled, passed actual English input, delete, mixed Arabic-English input, switch back to English and password focus. Release task failed due to missing runTests dependency variant, not runtime. Map all custom upstream build types to compatible voice variants (debugNoMinify/runTests -> debug; nouserlib -> release). Release-only retry label verifies prior exact source and report, skips redundant emulator/debug build, assembles unsigned non-debug release. No claim of voice inference/glide accuracy or signing yet.
 
 Owner release run 46139499671 succeeded; unsigned kit 15261257698 downloaded, checksums verified, signed offline with original key and verified via ApkVerifier. Version 102, SHA256 38364ecf84ec845807b0c2413588b598c555a32aa1f051d7dff4375da443a1e0, APK and corresponding source stored in owner Library /Zero Keyboard. Real bilingual tap gate on run 46138548880 passed; owner release itself not installed on emulator. No APK rebuild for following research/settings changes.
+
+## Startup fix on the ongoing core
+
+The integration keeps the post-0.2.0 voice setup and interrupted-decoder
+changes. Application and service labels again reference a resource. The welcome
+screen resolves the app label through the package manager, including if a
+downstream build uses a literal label. The next engineering version is
+0.2.2-engine-preview (104) so it can update a device running 0.2.1 (103).
+
+The unsigned owner Release job rebuilds from this branch and checks the actual
+release payload on Android 13. It exercises upgrade from the isolated 0.2.1
+release and fresh installation, wizard completion, and cold and warm settings
+launches. It retains the emulator evidence on failure and only makes the owner
+signing kit available after the runtime gate. The separate debug touch check
+continues to cover the synthetic editor and the bilingual input smoke.
