@@ -10,7 +10,7 @@ feature. Previous emulator results apply to their exact source and payload.
 | A | English and Arabic taps, delete, language switching | Tested with limitations | Actual Android 13 emulator touch test on earlier mature commit. Retest 105 and rapid taps. |
 | A | Shift, caps, repeat delete, field-aware actions, numeric, email and URL layouts | Implemented but untested | Mature core paths. Exercise editor actions, selection, rotation, composition and rich text. |
 | B | Local microphone permission, return to editor, bundled Tiny provisioning, missing Base fallback | Tested with limitations | Android 13 emulator showed grant and denial dialogs, returned to the editor with its text and reached recording after an explicit second tap. Missing Base fallback and Xiaomi hardware remain open. |
-| B | Capture, offline Whisper, review, pause, discard, continuous segments | Tested with limitations | Production JNI decoded public English on the host and rejected a cancelled session. Tiny WER was 92.0% auto and 84.8% forced Arabic on 16 Palestine clips. Android insertion and better Arabic accuracy remain open. |
+| B | Capture, offline Whisper, review, pause, discard, continuous segments | Tested with limitations | The Android 13 optimized evaluation recorded and inserted the public English sample and verified Discard. The replay-to-observed-insertion time was 106.91 seconds. Insertion adjacent to existing text joined the first word. Review, pause, continuous mode and broader accuracy remain open. |
 | B | Microphone activity, day/night voice panel, advanced controls | Implemented but untested | Candidate 105 adds a throttled level meter. Capture real screenshots and verify accessibility. |
 | C | Arabic and English suggestions, next-word, optional correction, user dictionary | Implemented but untested | Mature dictionaries and correction defaults. Run word-ranking, correction-off and backup cases. |
 | C | Palestinian and other informal dialect ranking, phrase and mixed-language evaluation | In development | Earlier host ASR and lexicon work. Collect consented typing samples and score actual candidate acceptances. |
@@ -34,8 +34,8 @@ feature. Previous emulator results apply to their exact source and payload.
 | K | Phone and tablet layouts, compact portrait defaults, split and height | Implemented but untested | Compact 0.82 default and existing split support. Measure Xiaomi Pad 5 with matched layout and editor. |
 | K | Floating and one-handed experience | Not started | Evaluate feasibility and verify on real hardware. |
 | L | Prior 0.2.2 installation, update and startup | Verified | Android 13 CI run 46145726737 passed 15 startup checks using test-signed copies. Owner APK signature verified independently. |
-| L | 0.2.3 compile, emulator, real tablet visual and sound gates | In development | Debug gate covers bilingual touches, mic permission, capture, discard and one verified public English recording replayed through the emulator microphone. Broader recognition accuracy remains open. |
-| L | 0.2.3 owner signature and distribution | Blocked | Depends on a validated release payload and the owner key. No candidate has been issued as an owner update. |
+| L | 0.2.3 compile, emulator, real tablet visual and sound gates | Tested with limitations | Android 13 gate passed on an optimized engineering build. Broader recognition, device frame timing and physical tablet visual checks remain open. |
+| L | 0.2.3 preview launch, upgrade and owner signature | Verified | Fifteen upgrade and fresh launch checks passed on isolated CI Release copies. The final owner APK matches the gated payload entries and the existing owner certificate. See the changelog for the digest. |
 | L | Local backup compatibility and safe migration | In development | Prior upgrade preserved existing data paths. Test versioned settings, themes, synonyms and pinned clipboard opt-in. |
 
 ## Branch and release evidence
@@ -105,4 +105,12 @@ feature. Previous emulator results apply to their exact source and payload.
   local processing and exceeded the insertion timeout. The CI logs show that
   the artifact used the native CMake Debug variant. The next evaluation keeps
   the geometry probe and links the native Release variant for representative
-  inference timing. Actual text insertion remains unverified.
+  inference timing.
+- [The optimized Android 13 evaluation](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46179051428)
+  passed nine checks. It replayed public English speech through the emulated
+  microphone, decoded it in the local Android app, and observed the expected
+  phrase in the original editor. It also confirmed the microphone was hidden in
+  a password field. Replay-to-observed-insertion was 106.91 seconds, including
+  audio delivery and editor polling. The report retains the joined-word behavior
+  when dictation follows existing text. These outcomes do not establish device
+  latency or broader language accuracy.

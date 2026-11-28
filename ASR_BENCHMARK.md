@@ -74,6 +74,12 @@ Reproduce with `research/asr/NativeInferenceSmoke.java`, host-built
 `libzero_whisper.so`, the pinned Tiny model and `samples/jfk.wav`.
 This test excludes Android microphone capture and editor insertion.
 
+An additional host comparison used the same JNI bridge, Tiny weights, four CPU
+threads and English audio. The optimized builds completed in 1.214, 1.294 and
+1.478 seconds. CMake Debug took 31.994 and 33.244 seconds. Every run also
+rejected decode after cancellation. The result explains why Android evaluation
+now links the optimized voice library. It does not quantify Pad 5 performance.
+
 ### Candidate tuned for Egyptian Arabic and code switching
 
 Measured Small Egyptian ACFT Q5_0 with four CPU threads and forced Arabic.
