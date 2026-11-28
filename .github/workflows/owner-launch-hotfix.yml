@@ -134,6 +134,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 4096
           disable-linux-hw-accel: false
           script: python3 research/rebase/release_launch_probe.py /tmp/zero-old.apk /tmp/zero-new.apk launch-evidence
       - name: Publish gated unsigned kit

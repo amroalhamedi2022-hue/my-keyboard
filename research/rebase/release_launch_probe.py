@@ -93,7 +93,7 @@ def onboarding(prefix):
     wait(lambda:node("Zero Voice & Glide"))
     passed(prefix+" warm settings launch")
 try:
-    adb("logcat","-c")
+    adb("logcat", "-b", "all", "-c")
     # Update from actual previous release, with both APKs re-signed by the same ephemeral CI certificate.
     adb("install",sys.argv[1])
     adb("install","-r",sys.argv[2])
@@ -103,9 +103,8 @@ try:
     adb("uninstall",PKG)
     adb("install",sys.argv[2])
     onboarding("fresh")
-    logs=adb("logcat","-d","-s","AndroidRuntime:E")
-    (out/"android-runtime.txt").write_text(logs)
-    assert not re.search(r"Process: com\.zerokeyboard\.ime(?:,|:)",logs),logs
+    logs = adb("logcat", "-b", "crash", "-d")
+    assert not re.search(r"(?:Process: |Cmdline: |>>> )com\.zerokeyboard\.ime(?:[, :]|$)", logs), logs
     report["checks"].append("no Zero AndroidRuntime crash")
 except Exception as exc:
     report["error"]=str(exc)
@@ -121,6 +120,16 @@ except Exception as exc:
         pass
     raise
 finally:
-    try:(out/"android-runtime.txt").write_text(adb("logcat","-d","-s","AndroidRuntime:E"))
-    except Exception:pass
+    for filename, args in [
+        ("android-runtime.txt", ("logcat", "-d", "-s", "AndroidRuntime:E")),
+        ("crash-buffer.txt", ("logcat", "-b", "crash", "-d")),
+        ("process-events.txt", ("logcat", "-b", "events", "-d", "-s",
+                                "am_proc_died", "am_kill", "am_crash", "am_anr")),
+        ("exit-info.txt", ("shell", "dumpsys", "activity", "exit-info", PKG)),
+        ("memory.txt", ("shell", "dumpsys", "meminfo", PKG)),
+    ]:
+        try:
+            (out / filename).write_text(adb(*args))
+        except subprocess.SubprocessError as error:
+            (out / filename).write_text(str(error))
     (out/"report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2))
