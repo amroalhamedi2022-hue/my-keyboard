@@ -24,6 +24,8 @@ public final class ZeroImeService extends InlineImeService {
  private GlideSurface root;
  private LinearLayout strip,reviewRow;
  private final ClipboardHistory clipboard=new ClipboardHistory();
+ private final android.os.Handler clipboardTimer=new android.os.Handler(android.os.Looper.getMainLooper());
+ private final Runnable clipboardExpiry=()->{if(settings!=null){clipboard.prune(SystemClock.elapsedRealtime(),settings.clipboardTtl());if(panel==1&&isInputViewShown())render();}};
  private int panel,emojiGroup;
  private final ArrayList<String> recentEmoji=new ArrayList<>();
  private LayoutProfile profile;
@@ -49,13 +51,13 @@ public final class ZeroImeService extends InlineImeService {
  @Override public void onStartInput(EditorInfo info,boolean restarting){invalidateInlineSession();cancelVoice();clearComposition(false);super.onStartInput(info,restarting);active=true;policy=EditorPolicy.from(info);resetPanels();shift=false;symbols=false;render();}
  @Override public void onStartInputView(EditorInfo info,boolean restarting){invalidateInlineSession();cancelVoice();super.onStartInputView(info,restarting);active=true;policy=EditorPolicy.from(info);resetPanels();render();}
  @Override public void onFinishInputView(boolean finishingInput){invalidateInlineSession();cancelVoice();clearComposition(true);active=false;resetPanels();if(root!=null)root.reset();super.onFinishInputView(finishingInput);}
- @Override public void onFinishInput(){invalidateInlineSession();cancelVoice();clearComposition(false);active=false;panel=0;clipboard.clear();policy=EditorPolicy.from(null);shift=false;symbols=false;if(root!=null)root.reset();super.onFinishInput();}
+ @Override public void onFinishInput(){invalidateInlineSession();cancelVoice();clearComposition(false);active=false;clearTransientPanels();policy=EditorPolicy.from(null);shift=false;symbols=false;if(root!=null)root.reset();super.onFinishInput();}
  @Override public void onCurrentInputMethodSubtypeChanged(InputMethodSubtype subtype){
   super.onCurrentInputMethodSubtypeChanged(subtype);if(subtype!=null){cancelVoice();clearComposition(true);lang=subtype.getLocale().startsWith("ar")?KeyboardLayout.Language.AR:KeyboardLayout.Language.EN;shift=false;symbols=false;render();}
  }
  @Override public void onConfigurationChanged(Configuration config){cancelVoice();clearComposition(true);super.onConfigurationChanged(config);render();}
- @Override public void onWindowHidden(){invalidateInlineSession();cancelVoice();panel=0;clipboard.clear();super.onWindowHidden();}
- @Override public void onDestroy(){clipboard.clear();recentEmoji.clear();voice.close();super.onDestroy();}
+ @Override public void onWindowHidden(){invalidateInlineSession();cancelVoice();clearTransientPanels();super.onWindowHidden();}
+ @Override public void onDestroy(){clearTransientPanels();recentEmoji.clear();voice.close();super.onDestroy();}
  private void cancelVoice(){pendingVoice="";if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(View.GONE);}editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText(R.string.mic_label);voiceKey.setContentDescription(getString(R.string.offline_voice));}}
  private boolean voiceAllowed(){return active&&isInputViewShown()&&settings!=null&&settings.voice()&&!settings.incognito()&&policy.allowPersonalization&&!policy.sensitive;}
  private boolean glideAllowed(){return panel==0&&active&&settings!=null&&settings.glide(lang==KeyboardLayout.Language.AR)&&!settings.incognito()&&policy.allowPersonalization&&!shift&&!symbols&&!policy.numeric;}
@@ -68,7 +70,7 @@ public final class ZeroImeService extends InlineImeService {
   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(h),weight);lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);b.setOnClickListener(v->action.run());return b;
  }
  @android.annotation.SuppressLint("ClickableViewAccessibility") private void render(){
-  if(root==null)return;profile=profile();if(!toolsAllowed()){panel=0;clipboard.clear();}if(!settings.clipboard()){clipboard.clear();if(panel==1)panel=0;}if(!settings.emoji()&&panel==2)panel=0;root.configure(glideAllowed(),settings.trail());root.removeAllViews();strip=row();strip.setVisibility(glideAllowed()?View.VISIBLE:View.GONE);strip.setMinimumHeight(dp(profile.keyHeight));reviewRow=row();reviewRow.setVisibility(View.GONE);
+  if(root==null)return;clipboardTimer.removeCallbacks(clipboardExpiry);profile=profile();if(!toolsAllowed()){panel=0;clipboard.clear();}if(!settings.clipboard()){clipboard.clear();if(panel==1)panel=0;}if(!settings.emoji()&&panel==2)panel=0;root.configure(glideAllowed(),settings.trail());root.removeAllViews();strip=row();strip.setVisibility(glideAllowed()?View.VISIBLE:View.GONE);strip.setMinimumHeight(dp(profile.keyHeight));reviewRow=row();reviewRow.setVisibility(View.GONE);
   if(panel!=0){renderPanel();return;}
   if(settings.editorTools()&&active&&!policy.sensitive&&!settings.incognito())editorToolbar();
   if(settings.numberRow()&&!policy.numeric&&!symbols){LinearLayout digits=row();for(String digit:LayoutProfile.digits(settings.indic()&&lang==KeyboardLayout.Language.AR).split(" "))key(digits,digit,digit,1f,()->insert(digit));}
@@ -96,7 +98,8 @@ public final class ZeroImeService extends InlineImeService {
   if(settings.emoji()&&toolsAllowed())key(tools,"☺","Emoji panel",1f,()->openPanel(2));
  }
  private boolean toolsAllowed(){return active&&settings!=null&&policy.allowPersonalization&&!policy.sensitive&&!settings.incognito();}
- private void resetPanels(){panel=0;if(!toolsAllowed()||!settings.clipboard())clipboard.clear();}
+ private void clearTransientPanels(){clipboardTimer.removeCallbacks(clipboardExpiry);clipboard.clear();if(panel!=0&&root!=null){root.reset();root.removeAllViews();}panel=0;}
+ private void resetPanels(){if(!toolsAllowed()||!settings.clipboard())clearTransientPanels();else panel=0;}
  private void openPanel(int value){if(!toolsAllowed())return;cancelVoice();clearComposition(true);panel=value;render();}
  private void renderPanel(){
   LinearLayout controls=row();key(controls,"ABC","Back to keyboard",1f,()->{panel=0;render();});
@@ -105,6 +108,7 @@ public final class ZeroImeService extends InlineImeService {
    key(controls,"Clear","Clear history",1f,()->{clipboard.clear();render();});
    long now=SystemClock.elapsedRealtime(),ttl=settings.clipboardTtl();
    List<ClipboardHistory.Entry> entries=clipboard.list(now,ttl);
+   long next=Long.MAX_VALUE;for(ClipboardHistory.Entry e:entries)if(!e.pinned)next=Math.min(next,e.savedAt+ttl-now);if(next!=Long.MAX_VALUE)clipboardTimer.postDelayed(clipboardExpiry,Math.max(1,next));
    if(entries.isEmpty()){TextView empty=new TextView(this);empty.setText("No saved text");empty.setTextColor(Color.WHITE);root.addView(empty);}
    // Cap visible rows to avoid covering the editor in landscape.
    ScrollView scroll=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);scroll.addView(list);root.addView(scroll,new LinearLayout.LayoutParams(-1,dp(profile.keyHeight*3)));

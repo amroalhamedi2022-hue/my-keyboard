@@ -25,6 +25,11 @@ jobs:
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
       - name: Verify probe helpers
         run: python3 -m unittest discover -s research/android -p 'test_*.py' -v
+      - name: Personal lexicon, clipboard and ranker smoke
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-batch6 app/src/main/java/com/zerokeyboard/ime/glide/PersonalLexicon.java app/src/main/java/com/zerokeyboard/ime/glide/GeometricRanker.java app/src/main/java/com/zerokeyboard/ime/tools/ClipboardHistory.java research/tools/Batch6Smoke.java research/glide/RankerEquivalence.java
+          java -ea -cp /tmp/zero-batch6 Batch6Smoke
+          java -ea -cp /tmp/zero-batch6 RankerEquivalence
       - name: Build once for runtime milestone
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon
       - name: Inspect debug APK

@@ -5,3 +5,5 @@
 4. Emoji: small original Unicode seed, four categories and session recents. No search, skin tones or complete Unicode coverage yet. No private emoji history persistence.
 5. Android runtime: no new CI result confirmed. No build triggered for this batch. Pure Java lexicon/history smoke checks executed locally; Android integration and optimized ranker require validation.
 Working rule: owner requests substantial parallel independent workstreams and a minimum one-hour productive target per batch. Current normal chat cannot guarantee wall-clock run length; do not fake elapsed time, pause artificially, or modify other active automations. Maximize available productive work and checkpoint commits. No routine full builds.
+
+Follow-up: 600 synthetic top-K versus full-ranking cases passed locally; exact GeometricRanker blob matched. Clipboard panel schedules expiration refresh while shown, clears references on window hide/finish and removes timer callbacks. Android lifecycle behavior still needs instrumentation.

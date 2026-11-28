@@ -28,6 +28,11 @@ jobs:
           java -ea -cp /tmp/zero-smoke Smoke
           java -ea -cp /tmp/zero-smoke CatalogSmoke
           java -ea -cp /tmp/zero-smoke LayoutSmoke
+      - name: Personal lexicon, clipboard and ranker smoke
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-batch6 app/src/main/java/com/zerokeyboard/ime/glide/PersonalLexicon.java app/src/main/java/com/zerokeyboard/ime/glide/GeometricRanker.java app/src/main/java/com/zerokeyboard/ime/tools/ClipboardHistory.java research/tools/Batch6Smoke.java research/glide/RankerEquivalence.java
+          java -ea -cp /tmp/zero-batch6 Batch6Smoke
+          java -ea -cp /tmp/zero-batch6 RankerEquivalence
       - run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         if: always()
