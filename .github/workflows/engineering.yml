@@ -28,6 +28,10 @@ jobs:
           java -ea -cp /tmp/zero-smoke Smoke
           java -ea -cp /tmp/zero-smoke CatalogSmoke
           java -ea -cp /tmp/zero-smoke LayoutSmoke
+      - name: Continuous audio segmentation and queue smoke
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-continuous app/src/main/java/com/zerokeyboard/ime/voice/SpeechWindow.java app/src/main/java/com/zerokeyboard/ime/voice/AudioSegments.java app/src/main/java/com/zerokeyboard/ime/voice/SegmentedDecoder.java research/voice/ContinuousSmoke.java
+          java -cp /tmp/zero-continuous ContinuousSmoke
       - name: Frequency resource and voice options smoke
         run: |
           javac -encoding UTF-8 -d /tmp/zero-batch7 app/src/main/java/com/zerokeyboard/ime/glide/FrequencyLexicon.java app/src/main/java/com/zerokeyboard/ime/voice/VoiceOptions.java research/tools/Batch7Smoke.java

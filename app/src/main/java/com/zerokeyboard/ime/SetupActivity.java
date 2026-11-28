@@ -51,7 +51,8 @@ public final class SetupActivity extends Activity {
   SeekBar expiry=new SeekBar(this);expiry.setMax(59);expiry.setProgress((int)(settings.clipboardTtl()/60000)-1);
   expiry.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){retention.setText("Clipboard expiry: "+(n+1)+" min");if(user)settings.clipboardMinutes(n+1);}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});root.addView(expiry);
   toggle(root,"Emoji panel",settings.emoji(),settings,"emoji_panel");
-  toggle(root,"Stop dictation after silence",settings.stopOnSilence(),settings,"voice_endpoint");
+  toggle(root,"Continuous segmented dictation (experimental)",settings.continuousVoice(),settings,"voice_continuous");
+  toggle(root,"Stop single-utterance dictation after silence",settings.stopOnSilence(),settings,"voice_endpoint");
   VoiceOptions voiceOptions=settings.voiceOptions();
   selector(root,"Voice language (Auto recommended)",new String[]{"Auto / mixed experimental","Arabic","English"},voiceOptions.language,n->settings.number("voice_language",n));
   selector(root,"Voice CPU threads",new String[]{"1","2","3","4"},voiceOptions.threads-1,n->settings.number("voice_threads",n+1));

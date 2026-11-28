@@ -9,6 +9,7 @@ public final class NativeWhisper {
  public static boolean available(){return READY;}
  public static long newSession(){return IDS.incrementAndGet();}
  public static void cancel(long id){if(READY)abort(id);}
+ public static void release(long id){if(READY)releaseSession(id);}
  public static String transcribe(String model,float[] pcm,int count,long id,VoiceOptions options){
   if(!READY)throw new IllegalStateException("voice library unavailable");
   byte[] bytes=decode(model,pcm,count,options.threads,id,options.language);
@@ -17,4 +18,5 @@ public final class NativeWhisper {
  }
  private static native byte[] decode(String path,float[] pcm,int count,int threads,long id,int language);
  private static native void abort(long id);
+ private static native void releaseSession(long id);
 }

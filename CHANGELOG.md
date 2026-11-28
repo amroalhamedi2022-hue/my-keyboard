@@ -21,3 +21,5 @@ Initial repository, requirement register, manual CI configuration, Android IME s
 - Batch 06: explicit personal bilingual glide vocabulary, bounded candidate ranking, optional session clipboard and original emoji seed panel. Pure Java lexicon and clipboard checks passed; new Android integration unverified.
 
 - Batch 07: optional bounded frequency dictionary import and deletion, background glide ranking, voice language/threads/endpoint controls and pause/resume. 13 pure-JVM checks passed, Android/JNI runtime unverified.
+
+- Batch 07 follow-up: optional continuous segmented capture with live completed-chunk previews, bounded queue and within-session native weights reuse. 17 synthetic JVM checks pass; native/Android runtime pending.

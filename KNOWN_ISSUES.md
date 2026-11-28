@@ -10,3 +10,5 @@ Batch 04: native abort callback added, not compiled/tested; model loading still 
 Batch 06: personal dictionary is limited to 512 words/language; no production lexicon. Clipboard explicitly saved plain text only, session RAM only; sensitive heuristics incomplete, pinned entries expire at session end. Emoji seed limited, no search or skin tones. Android integration and optimized ranker unverified.
 
 Batch 07: imported frequency resources optional, max 8k/language; no bundled production list, no frequency/context score; pending swipe superseded by next swipe before result; Android latency unverified. Pause/resume and language controls written but not run; 30 s audio/120 s wall cap, no streaming or validated code-switch accuracy. No APK generated in this chat.
+
+Batch 07 follow-up supersedes absence of continuous mode at source level: segmented previews only, not verified on device; 12s segment cap/5min wall limit, overflow stops capture, no token-level streaming. No neural VAD or actual code-switch benchmark. JNI no-state API path not compiled yet.

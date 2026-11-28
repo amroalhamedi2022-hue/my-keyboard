@@ -8,3 +8,5 @@ Batch 3: native whisper.cpp CPU backend and two exact-hash multilingual candidat
 Batch 5 adds an optional low-cost energy endpoint detector. It rejects isolated transient frames, trims leading/trailing silence, and can stop after 1.2 seconds of detected silence. This is deterministic signal processing, not a trained VAD, and sustained noise may be treated as speech. Its host unit tests do not establish ASR accuracy.
 
 Batch 07: per-session language/thread/endpoint controls and pause/resume source integration; same fixed Tiny/Base models. Actual mixed-language WER, model runtime, latency and mic resume behavior remain unmeasured. Auto remains default.
+
+Continuous follow-up: 17 synthetic segmentation/queue checks, fake decoder only. Optional bounded chunk decoding and within-session weights reuse written. Measure actual WER, first completed segment latency, RTF, sustained queue backlog, pauses and forced boundaries before production. No real voice model run yet.

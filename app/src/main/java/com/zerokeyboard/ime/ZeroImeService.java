@@ -31,7 +31,8 @@ public final class ZeroImeService extends InlineImeService {
  private int panel,emojiGroup;
  private final ArrayList<String> recentEmoji=new ArrayList<>();
  private LayoutProfile profile;
- private String pendingVoice="";
+ private String pendingVoice="",partialVoice="";
+ private TextView liveVoicePreview;
  private EditorPolicy policy=EditorPolicy.from(null);
  private ZeroSettings settings;
  private final VoiceSession voice=new VoiceSession();
@@ -67,7 +68,7 @@ public final class ZeroImeService extends InlineImeService {
  @Override public void onDestroy(){cancelGlide();glideWorker.shutdownNow();clearTransientPanels();recentEmoji.clear();voice.close();super.onDestroy();}
  private void expireClipboard(){if(settings!=null){clipboard.prune(SystemClock.elapsedRealtime(),settings.clipboardTtl());if(panel==1&&isInputViewShown())render();}}
  private void cancelGlide(){glideGeneration++;glideWorker.getQueue().clear();if(glidePending&&strip!=null)strip.removeAllViews();glidePending=false;}
- private void cancelVoice(){cancelGlide();pendingVoice="";if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(View.GONE);}editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText(R.string.mic_label);voiceKey.setContentDescription(getString(R.string.offline_voice));}}
+ private void cancelVoice(){cancelGlide();pendingVoice="";partialVoice="";liveVoicePreview=null;if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(View.GONE);}editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText(R.string.mic_label);voiceKey.setContentDescription(getString(R.string.offline_voice));}}
  private boolean voiceAllowed(){return active&&isInputViewShown()&&settings!=null&&settings.voice()&&!settings.incognito()&&policy.allowPersonalization&&!policy.sensitive;}
  private boolean glideAllowed(){return panel==0&&active&&settings!=null&&settings.glide(lang==KeyboardLayout.Language.AR)&&!settings.incognito()&&policy.allowPersonalization&&!shift&&!symbols&&!policy.numeric;}
  private LayoutProfile profile(){Configuration c=getResources().getConfiguration();boolean tablet=c.smallestScreenWidthDp>=600,landscape=c.orientation==Configuration.ORIENTATION_LANDSCAPE;return LayoutProfile.resolve(c.screenWidthDp,landscape,tablet,settings.layout(tablet,landscape),settings.height(tablet,landscape));}
@@ -180,11 +181,12 @@ public final class ZeroImeService extends InlineImeService {
   if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED||!models.installed(settings.model())||!NativeWhisper.available()){Toast.makeText(this,"Open Zero Keyboard setup to grant microphone and import a verified model",Toast.LENGTH_LONG).show();return;}
   cancelVoice();clearComposition(true);InputConnection target=getCurrentInputConnection();if(target==null)return;
   long generation=++editorGeneration;
-  voice.start(this,models,settings.model(),settings.voiceOptions(),new VoiceSession.Listener(){
+  voice.start(this,models,settings.model(),settings.voiceOptions(),settings.continuousVoice(),new VoiceSession.Listener(){
    public void state(String state){if(generation!=editorGeneration)return;voiceProcessing=state.startsWith("Processing");boolean paused=state.startsWith("Paused"),recording=state.startsWith("Recording");if(voiceKey!=null){voiceKey.setText(voiceProcessing?"Cancel":recording?"REC • Stop":paused?"Stop":state.startsWith("Preparing")?"Stop":"Mic");voiceKey.setContentDescription(state);}
-    if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(recording||paused?View.VISIBLE:View.GONE);if(recording||paused){key(reviewRow,paused?"Resume":"Pause",paused?"Resume recording":"Pause recording and release microphone capture",1f,voice::togglePause);key(reviewRow,"Discard","Cancel voice session",1f,ZeroImeService.this::cancelVoice);}}
-    if(state.startsWith("Voice unavailable")||state.startsWith("No speech"))Toast.makeText(ZeroImeService.this,state,Toast.LENGTH_SHORT).show();}
-   public void result(String text){if(generation==editorGeneration&&voiceAllowed()&&target==getCurrentInputConnection()){if(settings.voiceReview())reviewVoice(text,generation,target);else target.commitText(text,1);}}
+    if(reviewRow!=null){reviewRow.removeAllViews();liveVoicePreview=null;boolean show=recording||paused||voiceProcessing;reviewRow.setVisibility(show?View.VISIBLE:View.GONE);if(show){liveVoicePreview=new TextView(ZeroImeService.this);liveVoicePreview.setText(partialVoice.isEmpty()?state:partialVoice);liveVoicePreview.setTextColor(Color.WHITE);liveVoicePreview.setMaxLines(2);liveVoicePreview.setEllipsize(android.text.TextUtils.TruncateAt.START);reviewRow.addView(liveVoicePreview,new LinearLayout.LayoutParams(0,-2,3f));}if(recording||paused){key(reviewRow,paused?"Resume":"Pause",paused?"Resume recording":"Pause recording and release microphone capture",1f,voice::togglePause);key(reviewRow,"Discard","Cancel voice session",1f,ZeroImeService.this::cancelVoice);}}
+    if(state.startsWith("Voice unavailable")||state.startsWith("No speech")||state.contains("backlog"))Toast.makeText(ZeroImeService.this,state,Toast.LENGTH_SHORT).show();}
+   public void partial(String text){if(generation==editorGeneration&&voiceAllowed()&&target==getCurrentInputConnection()){partialVoice=text;if(liveVoicePreview!=null)liveVoicePreview.setText(text);}}
+   public void result(String text){partialVoice="";liveVoicePreview=null;if(generation==editorGeneration&&voiceAllowed()&&target==getCurrentInputConnection()){if(settings.voiceReview())reviewVoice(text,generation,target);else target.commitText(text,1);}}
   });
  }
  private void glide(List<GeometricRanker.Point> trace,Map<Integer,GeometricRanker.Point> centers){
