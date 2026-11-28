@@ -13,3 +13,10 @@
 | R14 | In Progress | Local Android build, 9 JUnit tests, clean lint, 7 Python tests and 23 JVM smoke assertions pass; 13 new resource/voice-option JVM checks pass; newest Android/JNI compiled in Actions run 46128896895; runtime probe failed at IME enable before UI tests |
 | R15 | In Progress | Owner release key generated and saved separately in personal Library, public fingerprint pinned, alpha code 100, offline signer and CI artifact route authored; signed Alpha01 APK verified and delivered; functional runtime acceptance pending |
 | R16 | Implemented | Checksum-verified Gradle wrapper and milestone CI workflow authored; local equivalent passes, GitHub Actions build passed; emulator runtime probe failed at activation |
+
+## Release evidence, 2026-11-28
+
+- 0.2.1 (103) fixes app-label lookup in the welcome wizard. The non-debug release passed 15 Android 13 launch and installation checks, including upgrade from 0.2.0 and fresh install. [Run 46144746034](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46144746034).
+- 0.2.2 (104) keeps the welcome wizard alive across system broadcasts and includes the mature clipboard policy. The prior 104 build recorded a SIGKILL in the upgrade path. The corrected non-debug release passed 15 Android 13 checks, including upgrade from 0.2.1, fresh install, welcome wizard, settings and voice settings. [Failed run 46144797605](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46144797605) and [passing run 46145726737](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46145726737).
+- Both Release APKs use the original owner signing certificate. The emulator tested matching Release payloads with a temporary test certificate, and the owner signatures and post-signing payload contents were verified separately. The Pad 5 and the full functional and performance matrices require device testing.
+- Human-sample engine evidence is in [ASR_BENCHMARK.md](ASR_BENCHMARK.md) and [GLIDE_BENCHMARK.md](GLIDE_BENCHMARK.md). Mixed-language dictation, Arabic swipe accuracy and on-device latency remain open.
