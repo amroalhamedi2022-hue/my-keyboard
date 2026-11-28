@@ -38,6 +38,18 @@ class Probe:
         return subprocess.run(["adb", "-s", self.serial, *args], check=True,
                               capture_output=True, timeout=45).stdout
 
+    def await_ime_registration(self, seconds=45):
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            try:
+                ids = self.adb("shell", "ime", "list", "-a", "-s").decode(errors="replace").splitlines()
+                if any(value.strip() in (IME, PACKAGE + "/" + PACKAGE + ".ZeroImeService") for value in ids):
+                    return
+            except subprocess.CalledProcessError:
+                pass
+            time.sleep(1)
+        raise RuntimeError("Zero Keyboard IME not registered after install and activity launch")
+
     def tree(self):
         self.adb("shell", "uiautomator", "dump", "/data/local/tmp/zero_probe.xml")
         return ET.fromstring(self.adb("shell", "cat", "/data/local/tmp/zero_probe.xml"))
@@ -84,7 +96,8 @@ class Probe:
         previous = self.adb("shell", "settings", "get", "secure", "default_input_method").decode().strip()
         try:
             self.adb("install", "-r", str(apk))
-            self.adb("shell", "am", "force-stop", PACKAGE)
+            self.adb("shell", "am", "start", "-W", "-n", ACTIVITY)
+            self.await_ime_registration()
             self.adb("shell", "ime", "enable", IME)
             self.adb("shell", "ime", "set", IME)
             self.adb("shell", "settings", "put", "secure", "show_ime_with_hard_keyboard", "1")
@@ -150,7 +163,11 @@ def main():
     try:
         probe.run(a.apk.resolve())
     except Exception as exc:
-        probe.report(str(exc))
+        error = str(exc)
+        if isinstance(exc, subprocess.CalledProcessError):
+            error += "\nstdout: " + (exc.stdout or b"").decode(errors="replace")[-2000:]
+            error += "\nstderr: " + (exc.stderr or b"").decode(errors="replace")[-2000:]
+        probe.report(error)
         raise
     probe.report()
 

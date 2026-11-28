@@ -25,3 +25,5 @@ Batch 07 continuous follow-up: compile JNI with pinned no-state APIs, instrument
 Batch 07 tools follow-up: compile and test new UI search, emoji insertion/tone, clipboard expiry outside panel, theme switches, ripple and feedback. Continue comprehensive settings search/grouping and licensed full emoji data. No automatic new full build triggered.
 
 Owner alpha priority: run corrected CI once; inspect failure if any; acquire unsigned release artifact and apksig kit, sign locally with owner Library key, verify certificate/package/version, deliver signed owner alpha only. Keep same certificate and application ID for updates. See docs/RELEASE_ALPHA01.md.
+
+Alpha01 signed and saved. Next use same key, package ID and higher versionCode; owner can try signed alpha now. Prioritize IME registration/activation runtime diagnosis and testing signed build on real Android, then actual voice and glide. Avoid rebuilding simply for documentation. See docs/RELEASE_ALPHA01.md.

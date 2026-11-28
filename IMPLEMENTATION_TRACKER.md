@@ -10,6 +10,6 @@
 | R10 | In Progress | No INTERNET; explicit RECORD_AUDIO runtime checks, voice disabled by default, no-follow exact model verification, backup exclusion and sensitive editor guard. Runtime security tests pending |
 | R11-R12 | In Progress | Provisional semantic palette and geometry tokens, system/dark/light, ripple, optional haptics/sound and trail width authored; contrast checks pass. Premium design references and actual-device performance/visual evidence pending |
 | R13 | Researching | Initial source triage; independent benchmarks pending |
-| R14 | In Progress | Local Android build, 9 JUnit tests, clean lint, 7 Python tests and 23 JVM smoke assertions pass; 13 new resource/voice-option JVM checks pass; newest Android changes uncompiled; instrumented/device tests pending |
-| R15 | In Progress | Owner release key generated and saved separately in personal Library, public fingerprint pinned, alpha code 100, offline signer and CI artifact route authored; no signed APK yet |
-| R16 | Implemented | Checksum-verified Gradle wrapper and milestone CI workflow authored; local equivalent passes, GitHub Actions result pending |
+| R14 | In Progress | Local Android build, 9 JUnit tests, clean lint, 7 Python tests and 23 JVM smoke assertions pass; 13 new resource/voice-option JVM checks pass; newest Android/JNI compiled in Actions run 46128896895; runtime probe failed at IME enable before UI tests |
+| R15 | In Progress | Owner release key generated and saved separately in personal Library, public fingerprint pinned, alpha code 100, offline signer and CI artifact route authored; signed Alpha01 APK verified and delivered; functional runtime acceptance pending |
+| R16 | Implemented | Checksum-verified Gradle wrapper and milestone CI workflow authored; local equivalent passes, GitHub Actions build passed; emulator runtime probe failed at activation |
