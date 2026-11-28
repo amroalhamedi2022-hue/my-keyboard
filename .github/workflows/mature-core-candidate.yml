@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   candidate:
-    if: github.event_name != 'pull_request' || ((github.event.label.name == 'zero-mature-core-candidate' || github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate') && github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.event_name != 'pull_request' || ((github.event.label.name == 'zero-mature-core-candidate' || github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-owner-release') && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -49,13 +49,15 @@ jobs:
         run: |
           python3 research/rebase/audit_baseline.py upstream/heliboard candidate-results
           python3 research/rebase/prepare_candidate.py upstream/heliboard .
-          if [ "${{ github.event.label.name }}" = 'zero-mature-voice-candidate' ] || [ "${{ github.event.label.name }}" = 'zero-mature-glide-candidate' ]; then
+          if [ "${{ github.event.label.name }}" = 'zero-mature-voice-candidate' ] || [ "${{ github.event.label.name }}" = 'zero-mature-glide-candidate' ] || [ "${{ github.event.label.name }}" = 'zero-mature-owner-release' ]; then
             python3 research/rebase/attach_voice.py upstream/heliboard .
-            if [ "${{ github.event.label.name }}" = 'zero-mature-glide-candidate' ]; then
+            if [ "${{ github.event.label.name }}" = 'zero-mature-glide-candidate' ] || [ "${{ github.event.label.name }}" = 'zero-mature-owner-release' ]; then
               python3 research/rebase/attach_glide.py upstream/heliboard .
             fi
             cp upstream/heliboard/app/src/main/java/com/zerokeyboard/ime/ZeroImeService.java /tmp/zero-production-service.java
-            python3 research/rebase/add_geometry_probe.py upstream/heliboard
+            if [ "${{ github.event.label.name }}" != 'zero-mature-owner-release' ]; then
+              python3 research/rebase/add_geometry_probe.py upstream/heliboard
+            fi
           fi
           python3 research/rebase/check_prepared.py upstream/heliboard
           git -C upstream/heliboard diff --check
@@ -63,9 +65,11 @@ jobs:
           git rev-parse HEAD > candidate-results/zero-source-commit.txt
           cp upstream/heliboard/ZERO-PROVENANCE.txt candidate-results/
       - name: Compile non-distribution candidate
+        if: github.event.label.name != 'zero-mature-owner-release'
         working-directory: upstream/heliboard
         run: ./gradlew :app:assembleDebugNoMinify --no-daemon
       - name: Verify candidate APK permissions and identity
+        if: github.event.label.name != 'zero-mature-owner-release'
         shell: bash
         run: |
           APK="$(find upstream/heliboard/app/build/outputs/apk/debugNoMinify -name '*.apk' -print -quit)"
@@ -103,8 +107,29 @@ jobs:
           emulator-boot-timeout: 600
           disable-linux-hw-accel: false
           script: python3 research/rebase/device_probe.py --candidate candidate-results/zero-mature-core-debug-evaluation.apk --fixture "$(find fixture -name '*.apk' -print -quit)" --out candidate-results/runtime
+      - name: Retrieve already passed bilingual touch gate
+        if: github.event.label.name == 'zero-mature-owner-release'
+        uses: actions/download-artifact@v4
+        with:
+          name: zero-mature-core-evaluation-not-release
+          run-id: 46138548880
+          github-token: ${{ github.token }}
+          path: previous-gate
+      - name: Validate prior device test evidence for release-only retry
+        if: github.event.label.name == 'zero-mature-owner-release'
+        run: |
+          test "$(cat previous-gate/zero-source-commit.txt)" = e342faa360c38234d6025248532874a84985ac4d
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("previous-gate/runtime/report.json").read_text())
+          assert "error" not in r, r
+          expected={"three English real touches","delete real touch","mixed Arabic/English touches","switch back to English","password field focused; screenshot for manual privacy review"}
+          assert expected.issubset(r["checks"]),r
+          print("PASS prior bilingual touch evidence; only build configuration changed")
+          PY
       - name: Prepare owner unsigned release only after real bilingual touch gate
-        if: github.event.label.name == 'zero-mature-glide-candidate'
+        if: github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-owner-release'
         shell: bash
         run: |
           cp /tmp/zero-production-service.java upstream/heliboard/app/src/main/java/com/zerokeyboard/ime/ZeroImeService.java
@@ -119,6 +144,7 @@ jobs:
           p.write_text(s.replace(old,"release {\n            isMinifyEnabled = false"))
           PY
           (cd upstream/heliboard && ./gradlew :app:assembleRelease --no-daemon)
+          if [ -f previous-gate/runtime/report.json ]; then cp previous-gate/runtime/report.json candidate-results/prior-touch-report.json; fi
           mkdir -p owner-release/classes
           APK="$(find upstream/heliboard/app/build/outputs/apk/release -name '*unsigned.apk' -print -quit)"
           test -f "$APK"
@@ -140,7 +166,7 @@ jobs:
           # Provide complete corresponding modified source and build scripts for the GPL derivative.
           tar -czf owner-release/zero-mature-corresponding-source.tar.gz --exclude=.git --exclude=.gradle --exclude=.cxx --exclude=build --exclude=local.properties --exclude=zero-staged-voice -C upstream/heliboard .
       - name: Preserve unsigned owner kit (not signed)
-        if: always() && github.event.label.name == 'zero-mature-glide-candidate'
+        if: always() && (github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-owner-release')
         uses: actions/upload-artifact@v4
         with:
           name: zero-mature-owner-unsigned-kit

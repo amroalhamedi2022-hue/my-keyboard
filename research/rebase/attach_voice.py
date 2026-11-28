@@ -17,6 +17,8 @@ shutil.copy2(templates/"zero-voice.gradle",module/"build.gradle")
 with (upstream/"settings.gradle").open("a") as f:f.write("\ninclude ':zero-voice'\n")
 app=upstream/"app"
 replace(app/"build.gradle.kts", 'create("debugNoMinify") { // for faster builds in IDE', 'create("debugNoMinify") { // for faster builds in IDE\n            matchingFallbacks += listOf("debug")')
+replace(app/"build.gradle.kts", 'create("runTests") { // build variant for running tests on CI that skips tests known to fail', 'create("runTests") { // build variant for running tests on CI that skips tests known to fail\n            matchingFallbacks += listOf("debug")')
+replace(app/"build.gradle.kts", 'create("nouserlib") { // same as release, but does not allow the user to provide a library', 'create("nouserlib") { // same as release, but does not allow the user to provide a library\n            matchingFallbacks += listOf("release")')
 replace(app/"build.gradle.kts","dependencies {",'dependencies {\n    implementation(project(":zero-voice"))')
 for name in ["ZeroImeService.java","VoiceSetupActivity.java"]:
     shutil.copy2(templates/name,app/"src/main/java/com/zerokeyboard/ime"/name)
