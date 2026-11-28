@@ -28,6 +28,10 @@ jobs:
           java -ea -cp /tmp/zero-smoke Smoke
           java -ea -cp /tmp/zero-smoke CatalogSmoke
           java -ea -cp /tmp/zero-smoke LayoutSmoke
+      - name: Theme, emoji and clipboard privacy smoke
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-tools7 app/src/main/java/com/zerokeyboard/ime/ThemeTokens.java app/src/main/java/com/zerokeyboard/ime/tools/EmojiCatalog.java app/src/main/java/com/zerokeyboard/ime/tools/ClipboardHistory.java research/tools/Tools7Smoke.java
+          java -cp /tmp/zero-tools7 Tools7Smoke
       - name: Continuous audio segmentation and queue smoke
         run: |
           javac -encoding UTF-8 -d /tmp/zero-continuous app/src/main/java/com/zerokeyboard/ime/voice/SpeechWindow.java app/src/main/java/com/zerokeyboard/ime/voice/AudioSegments.java app/src/main/java/com/zerokeyboard/ime/voice/SegmentedDecoder.java research/voice/ContinuousSmoke.java

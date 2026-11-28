@@ -34,6 +34,15 @@ final class ZeroSettings {
  boolean emoji(){return p.getBoolean("emoji_panel",true);}
  com.zerokeyboard.ime.voice.VoiceOptions voiceOptions(){return new com.zerokeyboard.ime.voice.VoiceOptions(p.getInt("voice_language",0),p.getInt("voice_threads",Math.min(4,Math.max(1,Runtime.getRuntime().availableProcessors()))),stopOnSilence(),p.getInt("voice_silence_ms",1200));}
  boolean continuousVoice(){return p.getBoolean("voice_continuous",false);}
+ int emojiTone(){return Math.max(0,Math.min(5,p.getInt("emoji_tone",0)));}
+ boolean keyHaptic(){return p.getBoolean("key_haptic",false);}
+ boolean keySound(){return p.getBoolean("key_sound",false);}
+ int themeMode(){return p.getInt("theme_mode",1);}
+ int keyRadius(){return p.getInt("key_radius",8);}
+ int keySpacing(){return p.getInt("key_spacing",2);}
+ int keyFont(){return p.getInt("key_font",18);}
+ int trailWidth(){return p.getInt("trail_width",4);}
+ ThemeTokens theme(boolean night){return ThemeTokens.resolve(themeMode(),night,keyRadius(),keySpacing(),keyFont(),trailWidth());}
  boolean importedDictionary(){return p.getBoolean("imported_dictionary",true);}
  void number(String key,int value){p.edit().putInt(key,value).apply();}
  void set(String key,boolean value){p.edit().putBoolean(key,value).apply();}

@@ -23,3 +23,5 @@ Initial repository, requirement register, manual CI configuration, Android IME s
 - Batch 07: optional bounded frequency dictionary import and deletion, background glide ranking, voice language/threads/endpoint controls and pause/resume. 13 pure-JVM checks passed, Android/JNI runtime unverified.
 
 - Batch 07 follow-up: optional continuous segmented capture with live completed-chunk previews, bounded queue and within-session native weights reuse. 17 synthetic JVM checks pass; native/Android runtime pending.
+
+- Batch 07 tools: bilingual offline emoji search and limited skin tones, preliminary semantic theme tokens and key/trail customization, optional feedback, clipboard expiry/privacy hardening, and microphone cleanup ordering. 52 pure-JVM checks pass; Android validation pending.

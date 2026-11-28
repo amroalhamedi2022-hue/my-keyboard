@@ -12,3 +12,5 @@ Batch 06: personal dictionary is limited to 512 words/language; no production le
 Batch 07: imported frequency resources optional, max 8k/language; no bundled production list, no frequency/context score; pending swipe superseded by next swipe before result; Android latency unverified. Pause/resume and language controls written but not run; 30 s audio/120 s wall cap, no streaming or validated code-switch accuracy. No APK generated in this chat.
 
 Batch 07 follow-up supersedes absence of continuous mode at source level: segmented previews only, not verified on device; 12s segment cap/5min wall limit, overflow stops capture, no token-level streaming. No neural VAD or actual code-switch benchmark. JNI no-state API path not compiled yet.
+
+Batch 07 tools: 96 original emoji metadata entries, limited skin tones, not complete CLDR coverage; preliminary palette/ripple only, no final visual approval or screenshot. Credential patterns are conservative and incomplete. Android expiry timer and all new UI/device behavior unverified.

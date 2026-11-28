@@ -51,6 +51,14 @@ public final class SetupActivity extends Activity {
   SeekBar expiry=new SeekBar(this);expiry.setMax(59);expiry.setProgress((int)(settings.clipboardTtl()/60000)-1);
   expiry.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){retention.setText("Clipboard expiry: "+(n+1)+" min");if(user)settings.clipboardMinutes(n+1);}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});root.addView(expiry);
   toggle(root,"Emoji panel",settings.emoji(),settings,"emoji_panel");
+  selector(root,"Emoji skin tone",new String[]{"Default","Light","Medium-light","Medium","Medium-dark","Dark"},settings.emojiTone(),n->settings.number("emoji_tone",n));
+  selector(root,"Keyboard appearance",new String[]{"System","Dark","Light"},settings.themeMode(),n->settings.number("theme_mode",n));
+  range(root,"Key corner radius",0,20,settings.keyRadius(),n->settings.number("key_radius",n));
+  range(root,"Key spacing",0,5,settings.keySpacing(),n->settings.number("key_spacing",n));
+  range(root,"Key font size",14,24,settings.keyFont(),n->settings.number("key_font",n));
+  range(root,"Gesture trail width",1,8,settings.trailWidth(),n->settings.number("trail_width",n));
+  toggle(root,"Key vibration",settings.keyHaptic(),settings,"key_haptic");
+  toggle(root,"Key click sound",settings.keySound(),settings,"key_sound");
   toggle(root,"Continuous segmented dictation (experimental)",settings.continuousVoice(),settings,"voice_continuous");
   toggle(root,"Stop single-utterance dictation after silence",settings.stopOnSilence(),settings,"voice_endpoint");
   VoiceOptions voiceOptions=settings.voiceOptions();
@@ -80,6 +88,11 @@ public final class SetupActivity extends Activity {
   imports.execute(()->{try{ModelCatalog model=models.install(uri);runOnUiThread(()->{if(!isDestroyed()){refreshModels();Toast.makeText(this,getString(R.string.model_verified,model.name()),Toast.LENGTH_SHORT).show();}});}catch(Exception e){runOnUiThread(()->{if(!isDestroyed()){refreshModels();Toast.makeText(this,R.string.model_rejected,Toast.LENGTH_LONG).show();}});}});
  }
  @Override protected void onDestroy(){imports.shutdown();super.onDestroy();}
+ private void range(LinearLayout root,String title,int min,int max,int current,java.util.function.IntConsumer change){
+  TextView label=new TextView(this);SeekBar bar=new SeekBar(this);bar.setMax(max-min);bar.setProgress(Math.max(0,Math.min(max-min,current-min)));
+  label.setText(title+": "+(min+bar.getProgress()));root.addView(label);root.addView(bar);
+  bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){label.setText(title+": "+(min+n));if(user)change.accept(min+n);}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});
+ }
  private void selector(LinearLayout root,String title,String[] labels,int current,java.util.function.IntConsumer change){
   TextView label=new TextView(this);label.setText(title);root.addView(label);
   Spinner spinner=new Spinner(this);spinner.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,labels));spinner.setSelection(Math.max(0,Math.min(labels.length-1,current)));

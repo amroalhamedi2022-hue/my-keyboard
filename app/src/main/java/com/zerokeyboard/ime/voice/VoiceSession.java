@@ -10,7 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-/** Single bounded utterance. All state callbacks on main thread, samples only in RAM. */
+/** Bounded single or segmented continuous dictation. All state callbacks on main thread, samples only in RAM. */
 public final class VoiceSession {
  public interface Listener{void state(String state);void result(String text);default void partial(String text){} }
  private static final int RATE=16000,MAX=RATE*30;
@@ -45,7 +45,8 @@ public final class VoiceSession {
    if(!NativeWhisper.available())throw new IllegalStateException("library missing");
    int min=AudioRecord.getMinBufferSize(RATE,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT);if(min<=0)throw new IllegalStateException("audio format unavailable");
    if(continuous){segments=new AudioSegments(options.silenceMillis);pipeline=new SegmentedDecoder(c->NativeWhisper.transcribe(file.getAbsolutePath(),c.pcm,c.pcm.length,job.id,options),text->partial(job,text));}
-   else samples=new float[MAX];chunk=new short[1024];
+   else {samples=new float[MAX];}
+   chunk=new short[1024];
    recorder=new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,RATE,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT,Math.max(min,4096));
    if(recorder.getState()!=AudioRecord.STATE_INITIALIZED)throw new IllegalStateException("mic unavailable");
    if(job.cancel||job.stop){done(job,null,"Ready");return;}
@@ -94,7 +95,7 @@ public final class VoiceSession {
    String result=NativeWhisper.transcribe(file.getAbsolutePath(),samples,length,job.id,options);
    done(job,result,"Ready");
   }catch(Exception|LinkageError error){done(job,null,"Voice unavailable • check setup");}
-  finally{if(pipeline!=null){if(!pipeline.done())NativeWhisper.cancel(job.id);pipeline.close();}if(backlog!=null)backlog.close();if(tail!=null)tail.close();if(segments!=null)segments.close();NativeWhisper.release(job.id);if(recorder!=null){try{recorder.stop();}catch(RuntimeException ignored){}recorder.release();}if(samples!=null)Arrays.fill(samples,0);if(chunk!=null)Arrays.fill(chunk,(short)0);}
+  finally{if(recorder!=null){try{recorder.stop();}catch(RuntimeException ignored){}try{recorder.release();}catch(RuntimeException ignored){}}if(pipeline!=null){if(!pipeline.done())NativeWhisper.cancel(job.id);pipeline.close();}if(backlog!=null)backlog.close();if(tail!=null)tail.close();if(segments!=null)segments.close();if(samples!=null)Arrays.fill(samples,0);if(chunk!=null)Arrays.fill(chunk,(short)0);NativeWhisper.release(job.id);}
  }
  private void enqueueLast(SegmentedDecoder pipeline,AudioSegments.Chunk chunk,Job job)throws Exception{
   long deadline=SystemClock.elapsedRealtime()+120000;

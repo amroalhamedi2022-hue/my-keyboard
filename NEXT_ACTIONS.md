@@ -21,3 +21,5 @@ Batch 06: validate personal dictionary editing and Glide merge, heap/pruning equ
 Batch 07: compile and instrument dictionary import/delete and invalid resource rejection, Android background glide and rapid gestures, voice pause/resume/cancellation and new JNI signature. Measure actual Arabic/English dictionaries and candidate latency; implement safe ordered gesture handling after measurement. Continue ASR benchmark, persistent weights/session architecture, emoji search, settings and performance. No routine build marker changed.
 
 Batch 07 continuous follow-up: compile JNI with pinned no-state APIs, instrument single and continuous recording, test microphone pause/resume and backlog with real model on Pad 5/Android13. Compare actual RTF and accuracy with real licensed mixed-speech data; refine boundary handling and avoid unverified claims.
+
+Batch 07 tools follow-up: compile and test new UI search, emoji insertion/tone, clipboard expiry outside panel, theme switches, ripple and feedback. Continue comprehensive settings search/grouping and licensed full emoji data. No automatic new full build triggered.

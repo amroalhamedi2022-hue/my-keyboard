@@ -21,6 +21,7 @@ final class GlideSurface extends LinearLayout {
  private float downX,downY,unit=1,lastX,lastY;
  private View first;
  GlideSurface(Context c,Listener l){super(c);listener=l;setWillNotDraw(false);paint.setColor(0xFF76D8FF);paint.setStyle(Paint.Style.STROKE);paint.setStrokeCap(Paint.Cap.ROUND);paint.setStrokeJoin(Paint.Join.ROUND);paint.setStrokeWidth(4*getResources().getDisplayMetrics().density);}
+ void trailStyle(int color,int widthDp){paint.setColor(color);paint.setStrokeWidth(widthDp*getResources().getDisplayMetrics().density);invalidate();}
  void configure(boolean active,boolean trail){reset();letters.clear();enabled=active;showTrail=trail;}
  void register(View v,String label){if(label.codePointCount(0,label.length())==1&&Character.isLetter(label.codePointAt(0)))letters.put(v,label);}
  void reset(){tracking=false;dragging=false;pointer=-1;first=null;points.clear();centers.clear();path.reset();invalidate();}
