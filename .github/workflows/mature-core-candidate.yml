@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   candidate:
-    if: github.event_name != 'pull_request' || (github.event.label.name == 'zero-mature-core-candidate' && github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.event_name != 'pull_request' || ((github.event.label.name == 'zero-mature-core-candidate' || github.event.label.name == 'zero-mature-voice-candidate') && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -39,11 +39,14 @@ jobs:
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "$SDK/platform-tools" >> "$GITHUB_PATH"
           "$MANAGER" --sdk_root="$SDK" --licenses < <(yes) >/dev/null
-          "$MANAGER" --sdk_root="$SDK" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.0.13004108'
+          "$MANAGER" --sdk_root="$SDK" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.0.13004108' 'cmake;3.22.1'
       - name: Prepare Zero engine source
         run: |
           python3 research/rebase/audit_baseline.py upstream/heliboard candidate-results
           python3 research/rebase/prepare_candidate.py upstream/heliboard .
+          if [ "${{ github.event.label.name }}" = 'zero-mature-voice-candidate' ]; then
+            python3 research/rebase/attach_voice.py upstream/heliboard .
+          fi
           git -C upstream/heliboard diff --check
           git -C upstream/heliboard diff > candidate-results/upstream-changes.patch
           git rev-parse HEAD > candidate-results/zero-source-commit.txt
