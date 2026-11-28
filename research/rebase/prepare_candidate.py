@@ -50,7 +50,7 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
     defaults = java / "settings/Defaults.kt"
     for key,value in {
         "PREF_AUTO_CORRECTION":"false","PREF_SUGGEST_CLIPBOARD_CONTENT":"false",
-        "PREF_ENABLE_CLIPBOARD_HISTORY":"false","PREF_SHOW_LANGUAGE_SWITCH_KEY":"true",
+        "PREF_ENABLE_CLIPBOARD_HISTORY":"false","PREF_SHOW_LANGUAGE_SWITCH_KEY":"true","PREF_SHOW_EMOJI_KEY":"true",
         "PREF_GESTURE_INPUT":"false","PREF_ALWAYS_INCOGNITO_MODE":"false",
         "PREF_KEY_USE_PERSONALIZED_DICTS":"false",
         "PREF_USE_CONTACTS":"false"
@@ -75,6 +75,34 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
         if (arabic != null) systemSubtypes.add(arabic)
 '''+source[end:]
     subtype.write_text(source,encoding="utf-8")
+    # The upstream globe visibility checks explicitly enabled subtypes (fallback=false).
+    # Seed both languages even when the preference is empty or only one was enabled.
+    replace(subtype,"            enabledSubtypes.add(subtype)\n        }\n    }",'''            enabledSubtypes.add(subtype)
+        }
+        enabledSubtypes.removeAll { it.locale().language !in setOf("ar", "en") }
+        for (language in listOf("en", "ar")) {
+            if (enabledSubtypes.none { it.locale().language == language }) {
+                val fallback = if (language == "en") resourceSubtypesByLocale[Locale.US]?.firstOrNull()
+                    else resourceSubtypesByLocale.entries.firstOrNull { it.key.language == language }?.value?.firstOrNull()
+                checkNotNull(fallback) { "Zero required language missing: $language" }
+                enabledSubtypes.add(fallback)
+            }
+        }
+    }
+
+    fun seedZeroLanguages(context: Context) {
+        reloadEnabledSubtypes(context)
+        val prefs = context.prefs()
+        val value = createPrefSubtypes(enabledSubtypes.map { it.toSettingsSubtype() })
+        if (prefs.getString(Settings.PREF_ENABLED_SUBTYPES, "") != value) {
+            prefs.edit { putString(Settings.PREF_ENABLED_SUBTYPES, value) }
+        }
+    }''')
+    appClass = java/"App.kt"
+    replace(appClass,"        AppUpgrade.checkVersionUpgrade(this)","        AppUpgrade.checkVersionUpgrade(this)\n        SubtypeSettings.seedZeroLanguages(this)")
+    # Keep upstream data schema version independent of Zero's smaller APK version.
+    upgrade = java/"AppUpgrade.kt"
+    replace(upgrade,"BuildConfig.VERSION_CODE","3603",2)
     jni=java/"utils/JniUtils.java"
     source=jni.read_text(encoding="utf-8")
     start=source.index("    static {")

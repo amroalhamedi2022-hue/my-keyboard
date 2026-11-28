@@ -64,7 +64,9 @@ def language(ar):
     alternative=ord("q") if ar else ord("ض")
     def found():return key(expected) or key(alternative)
     wait(found)
-    if not key(expected):tap(-227)
+    if not key(expected):
+        if not key(-227):raise AssertionError("required language switch key missing; codes="+str([v["code"] for v in geometry()]))
+        tap(-227)
     wait(lambda:key(expected))
 
 def snapshot(out,name):
@@ -88,14 +90,19 @@ def main():
         for c in "qwe":tap(ord(c))
         # Some editors start with auto-capitalization. Explicitly distinguish it from missing input.
         wait(lambda:(lambda n:n is not None and n.get("text","").lower()=="qwe")(field("zero_probe_normal")))
-        result["checks"].append("three English real touches")
+        result["checks"].append("three English real touches"); print("PASS English real touches",flush=True)
         tap(-7)
         wait(lambda:(lambda n:n is not None and n.get("text","").lower()=="qw")(field("zero_probe_normal")))
-        result["checks"].append("delete real touch")
+        result["checks"].append("delete real touch"); print("PASS delete real touch",flush=True)
         language(True);snapshot(a.out,"arabic")
         tap(ord("ض"))
         wait(lambda:(lambda n:n is not None and n.get("text","").lower()=="qwض")(field("zero_probe_normal")))
-        result["checks"].append("mixed Arabic/English touches")
+        result["checks"].append("mixed Arabic/English touches"); print("PASS bilingual real touches",flush=True)
+        snapshot(a.out,"mixed-text")
+        language(False)
+        tap(ord("a"))
+        wait(lambda:(lambda n:n is not None and n.get("text","").lower()=="qwضa")(field("zero_probe_normal")))
+        result["checks"].append("switch back to English")
         focus("zero_probe_password");snapshot(a.out,"password")
         result["checks"].append("password field focused; screenshot for manual privacy review")
     except Exception as e:

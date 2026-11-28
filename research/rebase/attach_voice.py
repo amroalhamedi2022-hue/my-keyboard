@@ -33,5 +33,8 @@ needle="        mShouldShowVoiceInputKey = false;"
 i=text.rindex(needle)
 text=text[:i]+text[i:].replace(needle,"        mShouldShowVoiceInputKey = com.zerokeyboard.ime.EditorPolicy.from(editorInfo).allowPersonalization && !hasNoMicrophoneKeyOption();",1)
 path.write_text(text)
+# Make the local voice button visible without depending on an external speech IME.
+toolbar=java/"utils/ToolbarUtils.kt"
+replace(toolbar,'val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {\n    it.name + Separators.KV + false\n}', 'val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {\n    it.name + Separators.KV + (it == VOICE)\n}')
 with (upstream/"ZERO-PROVENANCE.txt").open("a") as f:f.write("Voice adapter enabled: Zero local JNI library, private model storage, editor-bound recording and preview. Runtime verification pending.\n")
 print("Zero local voice module and service adapter attached.")

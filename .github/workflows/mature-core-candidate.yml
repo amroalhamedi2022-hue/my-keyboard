@@ -54,6 +54,7 @@ jobs:
             if [ "${{ github.event.label.name }}" = 'zero-mature-glide-candidate' ]; then
               python3 research/rebase/attach_glide.py upstream/heliboard .
             fi
+            cp upstream/heliboard/app/src/main/java/com/zerokeyboard/ime/ZeroImeService.java /tmp/zero-production-service.java
             python3 research/rebase/add_geometry_probe.py upstream/heliboard
           fi
           python3 research/rebase/check_prepared.py upstream/heliboard
@@ -102,6 +103,49 @@ jobs:
           emulator-boot-timeout: 600
           disable-linux-hw-accel: false
           script: python3 research/rebase/device_probe.py --candidate candidate-results/zero-mature-core-debug-evaluation.apk --fixture "$(find fixture -name '*.apk' -print -quit)" --out candidate-results/runtime
+      - name: Prepare owner unsigned release only after real bilingual touch gate
+        if: github.event.label.name == 'zero-mature-glide-candidate'
+        shell: bash
+        run: |
+          cp /tmp/zero-production-service.java upstream/heliboard/app/src/main/java/com/zerokeyboard/ime/ZeroImeService.java
+          if grep -q 'zero-eval-geometry' upstream/heliboard/app/src/main/java/com/zerokeyboard/ime/ZeroImeService.java; then exit 1; fi
+          # Non-minified release for initial migration, NOT a debug APK. Avoid JNI shrinker issues.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("upstream/heliboard/app/build.gradle.kts")
+          s=p.read_text()
+          old="release {\n            isMinifyEnabled = true"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,"release {\n            isMinifyEnabled = false"))
+          PY
+          (cd upstream/heliboard && ./gradlew :app:assembleRelease --no-daemon)
+          mkdir -p owner-release/classes
+          APK="$(find upstream/heliboard/app/build/outputs/apk/release -name '*unsigned.apk' -print -quit)"
+          test -f "$APK"
+          TOOL="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOL/zipalign" -P 16 -f 4 "$APK" owner-release/Zero-Keyboard-0.2.0-engine-preview-unsigned.apk
+          "$TOOL/zipalign" -c -P 16 4 owner-release/Zero-Keyboard-0.2.0-engine-preview-unsigned.apk
+          "$TOOL/aapt" dump badging owner-release/*.apk > owner-release/badging.txt
+          "$TOOL/aapt" dump permissions owner-release/*.apk > owner-release/permissions.txt
+          grep -q "package: name='com.zerokeyboard.ime' versionCode='102'" owner-release/badging.txt
+          ! grep -E 'android.permission.(INTERNET|READ_CONTACTS)' owner-release/permissions.txt
+          JAR="$(find "$HOME/.gradle/caches/modules-2/files-2.1/com.android.tools.build/apksig" -name 'apksig-8.10.1.jar' -print -quit)"
+          test -f "$JAR"
+          cp "$JAR" owner-release/
+          javac -encoding UTF-8 -cp "$JAR" -d owner-release/classes research/release/SignRelease.java
+          cp upstream/heliboard/LICENSE owner-release/LICENSE
+          cp upstream/heliboard/ZERO-PROVENANCE.txt owner-release/
+          git rev-parse HEAD > owner-release/source-commit.txt
+          (cd owner-release && sha256sum *.apk *.jar > checksums.sha256)
+          # Provide complete corresponding modified source and build scripts for the GPL derivative.
+          tar -czf owner-release/zero-mature-corresponding-source.tar.gz --exclude=.git --exclude=.gradle --exclude=.cxx --exclude=build --exclude=local.properties --exclude=zero-staged-voice -C upstream/heliboard .
+      - name: Preserve unsigned owner kit (not signed)
+        if: always() && github.event.label.name == 'zero-mature-glide-candidate'
+        uses: actions/upload-artifact@v4
+        with:
+          name: zero-mature-owner-unsigned-kit
+          path: owner-release/
+          if-no-files-found: warn
       - name: Preserve candidate evidence
         if: always()
         uses: actions/upload-artifact@v4
