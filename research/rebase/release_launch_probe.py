@@ -21,7 +21,8 @@ def wait(fn,seconds=40):
     while time.monotonic()<until:
         try:
             val=fn()
-            if val:return val
+            if val is not None:
+                return val
         except (subprocess.SubprocessError,ET.ParseError) as e:last=str(e)
         time.sleep(.5)
     raise AssertionError("UI condition not reached: "+str(last))
@@ -30,8 +31,6 @@ def tree():
     return ET.fromstring(adb("shell","cat","/data/local/tmp/zero-launch.xml"))
 def node(text):
     return next((n for n in tree().iter("node") if n.get("text")==text or n.get("content-desc")==text),None)
-def exists(text):
-    return node(text) is not None
 def tap(text):
     n=wait(lambda:node(text))
     coords=list(map(int,re.findall(r"\d+",n.get("bounds",""))))
@@ -49,19 +48,30 @@ def passed(name):
     alive();report["checks"].append(name);print("PASS "+name,flush=True)
 def onboarding(prefix):
     launch()
-    wait(lambda:exists("Get started"))
+    wait(lambda:node("Get started"))
     snap(prefix+"-welcome");passed(prefix+" disabled IME welcome")
-    tap("Get started");wait(lambda:exists("Enable in Settings"))
+    tap("Get started")
+    wait(lambda:node("Enable in Settings"))
     passed(prefix+" welcome action")
     adb("shell","ime","enable",IME)
-    launch();wait(lambda:exists("Switch input methods"))
+    launch();wait(lambda:node("Switch input methods"))
     snap(prefix+"-enabled");passed(prefix+" enabled not selected")
     adb("shell","ime","set",IME)
-    launch();wait(lambda:exists("Zero Voice & Glide"))
+    wait(lambda:node("Configure the keyboard"))
+    tap("Configure the keyboard")
+    wait(lambda:node("Zero Voice & Glide"))
+    passed(prefix+" wizard completed")
+    launch()
+    wait(lambda:node("Zero Voice & Glide"))
     snap(prefix+"-settings");passed(prefix+" selected settings")
-    tap("Zero Voice & Glide");wait(lambda:exists("Enable offline voice"))
+    tap("Zero Voice & Glide");wait(lambda:node("Enable offline voice"))
     snap(prefix+"-voice");passed(prefix+" voice settings")
     adb("shell","input","keyevent","4")
+    wait(lambda:node("Zero Voice & Glide"))
+    adb("shell","input","keyevent","3")
+    adb("shell","am","start","-W","-n",ACT)
+    wait(lambda:node("Zero Voice & Glide"))
+    passed(prefix+" warm settings launch")
 try:
     adb("logcat","-c")
     # Update from actual previous release, with both APKs re-signed by the same ephemeral CI certificate.
@@ -81,6 +91,10 @@ except Exception as exc:
     report["error"]=str(exc)
     try:snap("failure")
     except Exception:pass
+    try:
+        (out/"failure-ui.xml").write_text(ET.tostring(tree(), encoding="unicode"))
+    except Exception:
+        pass
     raise
 finally:
     try:(out/"android-runtime.txt").write_text(adb("logcat","-d","-s","AndroidRuntime:E"))
