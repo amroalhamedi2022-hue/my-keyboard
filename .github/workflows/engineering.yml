@@ -28,6 +28,10 @@ jobs:
           java -ea -cp /tmp/zero-smoke Smoke
           java -ea -cp /tmp/zero-smoke CatalogSmoke
           java -ea -cp /tmp/zero-smoke LayoutSmoke
+      - name: Frequency resource and voice options smoke
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-batch7 app/src/main/java/com/zerokeyboard/ime/glide/FrequencyLexicon.java app/src/main/java/com/zerokeyboard/ime/voice/VoiceOptions.java research/tools/Batch7Smoke.java
+          java -cp /tmp/zero-batch7 Batch7Smoke
       - name: Personal lexicon, clipboard and ranker smoke
         run: |
           javac -encoding UTF-8 -d /tmp/zero-batch6 app/src/main/java/com/zerokeyboard/ime/glide/PersonalLexicon.java app/src/main/java/com/zerokeyboard/ime/glide/GeometricRanker.java app/src/main/java/com/zerokeyboard/ime/tools/ClipboardHistory.java research/tools/Batch6Smoke.java research/glide/RankerEquivalence.java

@@ -14,7 +14,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_zerokeyboard_ime_voice_NativeWhisper_
  int64_t previous=cancelled_through.load();while(previous<id&&!cancelled_through.compare_exchange_weak(previous,id)){}
 }
 static void discard_log(enum ggml_log_level, const char *, void *) {}
-extern "C" JNIEXPORT jbyteArray JNICALL Java_com_zerokeyboard_ime_voice_NativeWhisper_decode(JNIEnv *env,jclass,jstring path,jfloatArray pcm,jint count,jint threads,jlong id){
+extern "C" JNIEXPORT jbyteArray JNICALL Java_com_zerokeyboard_ime_voice_NativeWhisper_decode(JNIEnv *env,jclass,jstring path,jfloatArray pcm,jint count,jint threads,jlong id,jint language){
  if(!path||!pcm||count<1600||count>480000||count>env->GetArrayLength(pcm))return nullptr;
  try{
   std::lock_guard<std::mutex> lock(inference_mutex);int64_t session=id;if(should_abort(&session))return nullptr;
@@ -26,7 +26,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_com_zerokeyboard_ime_voice_NativeWh
   if(should_abort(&session)||!ctx||!whisper_is_multilingual(ctx.get()))return nullptr;
   std::vector<float> audio(count);env->GetFloatArrayRegion(pcm,0,count,audio.data());if(env->ExceptionCheck())return nullptr;
   auto params=whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
-  params.n_threads=std::clamp((int)threads,1,4);params.language="auto";params.translate=false;params.no_context=true;
+  params.n_threads=std::clamp((int)threads,1,4);params.language=language==1?"ar":language==2?"en":"auto";params.translate=false;params.no_context=true;
   params.print_progress=false;params.print_realtime=false;params.print_timestamps=false;params.print_special=false;
   params.abort_callback=should_abort;params.abort_callback_user_data=&session;
   int result=whisper_full(ctx.get(),params,audio.data(),count);std::fill(audio.begin(),audio.end(),0.f);

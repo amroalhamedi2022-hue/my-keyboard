@@ -32,5 +32,8 @@ final class ZeroSettings {
  long clipboardTtl(){int min=p.getInt("clipboard_minutes",15);return Math.max(1,Math.min(60,min))*60000L;}
  void clipboardMinutes(int min){p.edit().putInt("clipboard_minutes",Math.max(1,Math.min(60,min))).apply();}
  boolean emoji(){return p.getBoolean("emoji_panel",true);}
+ com.zerokeyboard.ime.voice.VoiceOptions voiceOptions(){return new com.zerokeyboard.ime.voice.VoiceOptions(p.getInt("voice_language",0),p.getInt("voice_threads",Math.min(4,Math.max(1,Runtime.getRuntime().availableProcessors()))),stopOnSilence(),p.getInt("voice_silence_ms",1200));}
+ boolean importedDictionary(){return p.getBoolean("imported_dictionary",true);}
+ void number(String key,int value){p.edit().putInt(key,value).apply();}
  void set(String key,boolean value){p.edit().putBoolean(key,value).apply();}
 }

@@ -8,12 +8,15 @@ import android.widget.*;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import com.zerokeyboard.ime.voice.*;
+import com.zerokeyboard.ime.glide.DictionaryResourceStore;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 public final class SetupActivity extends Activity {
  private final ExecutorService imports=Executors.newSingleThreadExecutor();
  private TextView modelStatus;
  private ModelStore models;
+ private DictionaryResourceStore dictionaries;
+ private TextView dictionaryStatus;
  @Override public void onCreate(Bundle state) {
   super.onCreate(state);
   LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
@@ -36,12 +39,25 @@ public final class SetupActivity extends Activity {
   toggle(root,"Editor toolbar",settings.editorTools(),settings,"editor_tools");
   toggle(root,"Personal glide dictionary",settings.personalEnabled(),settings,"personal_enabled");
   dictionary(root,settings,false);dictionary(root,settings,true);
+  dictionaries=new DictionaryResourceStore(this);
+  toggle(root,"Use imported frequency dictionary",settings.importedDictionary(),settings,"imported_dictionary");
+  dictionaryStatus=new TextView(this);dictionaryStatus.setText("Local UTF-8 word/count dictionaries • up to 8,000 words per language");root.addView(dictionaryStatus);
+  for(boolean ar:new boolean[]{false,true}){
+   Button add=new Button(this);add.setText(ar?"Import Arabic frequency list":"Import English frequency list");add.setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");startActivityForResult(i,ar?45:44);});root.addView(add);
+   Button remove=new Button(this);remove.setText(ar?"Remove Arabic frequency list":"Remove English frequency list");remove.setOnClickListener(v->imports.execute(()->{dictionaries.remove(ar);runOnUiThread(()->{if(!isDestroyed())dictionaryStatus.setText("Dictionary removed");});}));root.addView(remove);
+  }
   toggle(root,"Session clipboard (explicit save only)",settings.clipboard(),settings,"clipboard_history");
   TextView retention=new TextView(this);retention.setText("Clipboard expiry: "+settings.clipboardTtl()/60000+" min");root.addView(retention);
   SeekBar expiry=new SeekBar(this);expiry.setMax(59);expiry.setProgress((int)(settings.clipboardTtl()/60000)-1);
   expiry.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){retention.setText("Clipboard expiry: "+(n+1)+" min");if(user)settings.clipboardMinutes(n+1);}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});root.addView(expiry);
   toggle(root,"Emoji panel",settings.emoji(),settings,"emoji_panel");
-  toggle(root,"Stop dictation after 1.2 seconds of silence",settings.stopOnSilence(),settings,"voice_endpoint");
+  toggle(root,"Stop dictation after silence",settings.stopOnSilence(),settings,"voice_endpoint");
+  VoiceOptions voiceOptions=settings.voiceOptions();
+  selector(root,"Voice language (Auto recommended)",new String[]{"Auto / mixed experimental","Arabic","English"},voiceOptions.language,n->settings.number("voice_language",n));
+  selector(root,"Voice CPU threads",new String[]{"1","2","3","4"},voiceOptions.threads-1,n->settings.number("voice_threads",n+1));
+  TextView silence=new TextView(this);silence.setText("Silence duration: "+voiceOptions.silenceMillis+" ms");root.addView(silence);
+  SeekBar duration=new SeekBar(this);duration.setMax(26);duration.setProgress((voiceOptions.silenceMillis-400)/100);
+  duration.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){int value=400+n*100;silence.setText("Silence duration: "+value+" ms");if(user)settings.number("voice_silence_ms",value);}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});root.addView(duration);
   toggle(root,"Review dictated text before insertion",settings.voiceReview(),settings,"voice_review");
   for(boolean tablet:new boolean[]{false,true})for(boolean landscape:new boolean[]{false,true})profile(root,settings,tablet,landscape);
   models=new ModelStore(this);modelStatus=new TextView(this);root.addView(modelStatus);refreshModels();
@@ -54,11 +70,20 @@ public final class SetupActivity extends Activity {
  }
  private void refreshModels(){modelStatus.setText(getString(R.string.model_status,models.installed(ModelCatalog.TINY)?getString(R.string.installed):getString(R.string.missing),models.installed(ModelCatalog.BASE)?getString(R.string.installed):getString(R.string.missing)));}
  @Override protected void onActivityResult(int req,int result,Intent data){
-  super.onActivityResult(req,result,data);if(req!=43||result!=RESULT_OK||data==null||data.getData()==null)return;
+  super.onActivityResult(req,result,data);if(result!=RESULT_OK||data==null||data.getData()==null)return;
+  if(req==44||req==45){android.net.Uri resource=data.getData();dictionaryStatus.setText("Validating dictionary…");
+   imports.execute(()->{try{int count=dictionaries.install(resource,req==45);runOnUiThread(()->{if(!isDestroyed())dictionaryStatus.setText("Dictionary installed: "+count+" valid words");});}catch(Exception e){runOnUiThread(()->{if(!isDestroyed())dictionaryStatus.setText("Dictionary rejected: invalid or too large");});}});return;
+  }
+  if(req!=43)return;
   android.net.Uri uri=data.getData();modelStatus.setText(R.string.verifying_model);
   imports.execute(()->{try{ModelCatalog model=models.install(uri);runOnUiThread(()->{if(!isDestroyed()){refreshModels();Toast.makeText(this,getString(R.string.model_verified,model.name()),Toast.LENGTH_SHORT).show();}});}catch(Exception e){runOnUiThread(()->{if(!isDestroyed()){refreshModels();Toast.makeText(this,R.string.model_rejected,Toast.LENGTH_LONG).show();}});}});
  }
  @Override protected void onDestroy(){imports.shutdown();super.onDestroy();}
+ private void selector(LinearLayout root,String title,String[] labels,int current,java.util.function.IntConsumer change){
+  TextView label=new TextView(this);label.setText(title);root.addView(label);
+  Spinner spinner=new Spinner(this);spinner.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,labels));spinner.setSelection(Math.max(0,Math.min(labels.length-1,current)));
+  spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> parent,android.view.View view,int n,long id){change.accept(n);}public void onNothingSelected(AdapterView<?> parent){}});root.addView(spinner);
+ }
  private void dictionary(LinearLayout root,ZeroSettings settings,boolean arabic){
   Button edit=new Button(this);edit.setText(arabic?"Edit Arabic personal words":"Edit English personal words");
   edit.setOnClickListener(v->{EditText words=new EditText(this);words.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE|android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);words.setImeOptions(android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING);words.setText(settings.personalText(arabic));words.setMinLines(4);words.setMaxLines(8);words.setHint("One word per line");

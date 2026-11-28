@@ -19,3 +19,5 @@ Initial repository, requirement register, manual CI configuration, Android IME s
 - Batch 04: native cooperative cancellation, voice review, adaptive profiles, number row/Arabic-Indic digits, editor toolbar and spacebar cursor gestures. Android/JNI verification pending.
 
 - Batch 06: explicit personal bilingual glide vocabulary, bounded candidate ranking, optional session clipboard and original emoji seed panel. Pure Java lexicon and clipboard checks passed; new Android integration unverified.
+
+- Batch 07: optional bounded frequency dictionary import and deletion, background glide ranking, voice language/threads/endpoint controls and pause/resume. 13 pure-JVM checks passed, Android/JNI runtime unverified.

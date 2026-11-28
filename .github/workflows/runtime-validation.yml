@@ -25,6 +25,10 @@ jobs:
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
       - name: Verify probe helpers
         run: python3 -m unittest discover -s research/android -p 'test_*.py' -v
+      - name: Frequency resource and voice options smoke
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-batch7 app/src/main/java/com/zerokeyboard/ime/glide/FrequencyLexicon.java app/src/main/java/com/zerokeyboard/ime/voice/VoiceOptions.java research/tools/Batch7Smoke.java
+          java -cp /tmp/zero-batch7 Batch7Smoke
       - name: Personal lexicon, clipboard and ranker smoke
         run: |
           javac -encoding UTF-8 -d /tmp/zero-batch6 app/src/main/java/com/zerokeyboard/ime/glide/PersonalLexicon.java app/src/main/java/com/zerokeyboard/ime/glide/GeometricRanker.java app/src/main/java/com/zerokeyboard/ime/tools/ClipboardHistory.java research/tools/Batch6Smoke.java research/glide/RankerEquivalence.java

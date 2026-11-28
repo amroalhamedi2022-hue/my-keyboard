@@ -8,7 +8,9 @@ import android.widget.*;
 import com.zerokeyboard.ime.glide.GeometricRanker;
 import com.zerokeyboard.ime.glide.SeedLexicon;
 import java.util.*;
-import com.zerokeyboard.ime.glide.PersonalLexicon;
+import com.zerokeyboard.ime.glide.FrequencyLexicon;
+import com.zerokeyboard.ime.glide.DictionaryResourceStore;
+import java.util.concurrent.*;
 import com.zerokeyboard.ime.tools.ClipboardHistory;
 import com.zerokeyboard.ime.tools.EmojiCatalog;
 import android.content.ClipboardManager;
@@ -25,7 +27,7 @@ public final class ZeroImeService extends InlineImeService {
  private LinearLayout strip,reviewRow;
  private final ClipboardHistory clipboard=new ClipboardHistory();
  private final android.os.Handler clipboardTimer=new android.os.Handler(android.os.Looper.getMainLooper());
- private final Runnable clipboardExpiry=()->{if(settings!=null){clipboard.prune(SystemClock.elapsedRealtime(),settings.clipboardTtl());if(panel==1&&isInputViewShown())render();}};
+ private final Runnable clipboardExpiry=this::expireClipboard;
  private int panel,emojiGroup;
  private final ArrayList<String> recentEmoji=new ArrayList<>();
  private LayoutProfile profile;
@@ -38,13 +40,18 @@ public final class ZeroImeService extends InlineImeService {
  private long editorGeneration;
  private boolean voiceProcessing;
  private final GeometricRanker ranker=new GeometricRanker();
+ private DictionaryResourceStore dictionaries;
+ private final android.os.Handler glideMain=new android.os.Handler(android.os.Looper.getMainLooper());
+ private final ThreadPoolExecutor glideWorker=new ThreadPoolExecutor(1,1,0L,TimeUnit.MILLISECONDS,new ArrayBlockingQueue<>(1),new ThreadPoolExecutor.DiscardOldestPolicy());
+ private volatile long glideGeneration;
+ private boolean glidePending;
  private InputConnection composingConnection;
  private String composed="";
  private boolean confirmed=false;
  private int composingStart=-1,composingEnd=-1;
  private int dp(float value){return Math.round(value*getResources().getDisplayMetrics().density);}
  @Override public View onCreateInputView(){
-  settings=new ZeroSettings(this);models=new ModelStore(this);root=new GlideSurface(this,this::glide);root.setOrientation(LinearLayout.VERTICAL);root.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+  settings=new ZeroSettings(this);models=new ModelStore(this);dictionaries=new DictionaryResourceStore(this);root=new GlideSurface(this,this::glide);root.setOrientation(LinearLayout.VERTICAL);root.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
   root.setPadding(dp(3),dp(4),dp(3),dp(5));root.setBackgroundColor(Color.rgb(24,29,38));render();return wrapWithInlineStrip(root);
  }
  @Override public boolean onEvaluateFullscreenMode(){return false;}
@@ -57,8 +64,10 @@ public final class ZeroImeService extends InlineImeService {
  }
  @Override public void onConfigurationChanged(Configuration config){cancelVoice();clearComposition(true);super.onConfigurationChanged(config);render();}
  @Override public void onWindowHidden(){invalidateInlineSession();cancelVoice();clearTransientPanels();super.onWindowHidden();}
- @Override public void onDestroy(){clearTransientPanels();recentEmoji.clear();voice.close();super.onDestroy();}
- private void cancelVoice(){pendingVoice="";if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(View.GONE);}editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText(R.string.mic_label);voiceKey.setContentDescription(getString(R.string.offline_voice));}}
+ @Override public void onDestroy(){cancelGlide();glideWorker.shutdownNow();clearTransientPanels();recentEmoji.clear();voice.close();super.onDestroy();}
+ private void expireClipboard(){if(settings!=null){clipboard.prune(SystemClock.elapsedRealtime(),settings.clipboardTtl());if(panel==1&&isInputViewShown())render();}}
+ private void cancelGlide(){glideGeneration++;glideWorker.getQueue().clear();if(glidePending&&strip!=null)strip.removeAllViews();glidePending=false;}
+ private void cancelVoice(){cancelGlide();pendingVoice="";if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(View.GONE);}editorGeneration++;voice.cancel();voiceProcessing=false;if(voiceKey!=null){voiceKey.setText(R.string.mic_label);voiceKey.setContentDescription(getString(R.string.offline_voice));}}
  private boolean voiceAllowed(){return active&&isInputViewShown()&&settings!=null&&settings.voice()&&!settings.incognito()&&policy.allowPersonalization&&!policy.sensitive;}
  private boolean glideAllowed(){return panel==0&&active&&settings!=null&&settings.glide(lang==KeyboardLayout.Language.AR)&&!settings.incognito()&&policy.allowPersonalization&&!shift&&!symbols&&!policy.numeric;}
  private LayoutProfile profile(){Configuration c=getResources().getConfiguration();boolean tablet=c.smallestScreenWidthDp>=600,landscape=c.orientation==Configuration.ORIENTATION_LANDSCAPE;return LayoutProfile.resolve(c.screenWidthDp,landscape,tablet,settings.layout(tablet,landscape),settings.height(tablet,landscape));}
@@ -70,7 +79,7 @@ public final class ZeroImeService extends InlineImeService {
   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(h),weight);lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(b,lp);b.setOnClickListener(v->action.run());return b;
  }
  @android.annotation.SuppressLint("ClickableViewAccessibility") private void render(){
-  if(root==null)return;clipboardTimer.removeCallbacks(clipboardExpiry);profile=profile();if(!toolsAllowed()){panel=0;clipboard.clear();}if(!settings.clipboard()){clipboard.clear();if(panel==1)panel=0;}if(!settings.emoji()&&panel==2)panel=0;root.configure(glideAllowed(),settings.trail());root.removeAllViews();strip=row();strip.setVisibility(glideAllowed()?View.VISIBLE:View.GONE);strip.setMinimumHeight(dp(profile.keyHeight));reviewRow=row();reviewRow.setVisibility(View.GONE);
+  if(root==null)return;cancelGlide();clipboardTimer.removeCallbacks(clipboardExpiry);profile=profile();if(!toolsAllowed()){panel=0;clipboard.clear();}if(!settings.clipboard()){clipboard.clear();if(panel==1)panel=0;}if(!settings.emoji()&&panel==2)panel=0;root.configure(glideAllowed(),settings.trail());root.removeAllViews();strip=row();strip.setVisibility(glideAllowed()?View.VISIBLE:View.GONE);strip.setMinimumHeight(dp(profile.keyHeight));reviewRow=row();reviewRow.setVisibility(View.GONE);
   if(panel!=0){renderPanel();return;}
   if(settings.editorTools()&&active&&!policy.sensitive&&!settings.incognito())editorToolbar();
   if(settings.numberRow()&&!policy.numeric&&!symbols){LinearLayout digits=row();for(String digit:LayoutProfile.digits(settings.indic()&&lang==KeyboardLayout.Language.AR).split(" "))key(digits,digit,digit,1f,()->insert(digit));}
@@ -171,16 +180,30 @@ public final class ZeroImeService extends InlineImeService {
   if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED||!models.installed(settings.model())||!NativeWhisper.available()){Toast.makeText(this,"Open Zero Keyboard setup to grant microphone and import a verified model",Toast.LENGTH_LONG).show();return;}
   cancelVoice();clearComposition(true);InputConnection target=getCurrentInputConnection();if(target==null)return;
   long generation=++editorGeneration;
-  voice.start(this,models,settings.model(),settings.stopOnSilence(),new VoiceSession.Listener(){
-   public void state(String state){if(generation!=editorGeneration)return;voiceProcessing=state.startsWith("Processing");if(voiceKey!=null)voiceKey.setText(voiceProcessing?"Cancel":state.startsWith("Recording")?"REC • Stop":state.startsWith("Preparing")?"Stop":"Mic");if(voiceKey!=null)voiceKey.setContentDescription(state);if(state.startsWith("Voice unavailable")||state.startsWith("No speech"))Toast.makeText(ZeroImeService.this,state,Toast.LENGTH_SHORT).show();}
+  voice.start(this,models,settings.model(),settings.voiceOptions(),new VoiceSession.Listener(){
+   public void state(String state){if(generation!=editorGeneration)return;voiceProcessing=state.startsWith("Processing");boolean paused=state.startsWith("Paused"),recording=state.startsWith("Recording");if(voiceKey!=null){voiceKey.setText(voiceProcessing?"Cancel":recording?"REC • Stop":paused?"Stop":state.startsWith("Preparing")?"Stop":"Mic");voiceKey.setContentDescription(state);}
+    if(reviewRow!=null){reviewRow.removeAllViews();reviewRow.setVisibility(recording||paused?View.VISIBLE:View.GONE);if(recording||paused){key(reviewRow,paused?"Resume":"Pause",paused?"Resume recording":"Pause recording and release microphone capture",1f,voice::togglePause);key(reviewRow,"Discard","Cancel voice session",1f,ZeroImeService.this::cancelVoice);}}
+    if(state.startsWith("Voice unavailable")||state.startsWith("No speech"))Toast.makeText(ZeroImeService.this,state,Toast.LENGTH_SHORT).show();}
    public void result(String text){if(generation==editorGeneration&&voiceAllowed()&&target==getCurrentInputConnection()){if(settings.voiceReview())reviewVoice(text,generation,target);else target.commitText(text,1);}}
   });
  }
  private void glide(List<GeometricRanker.Point> trace,Map<Integer,GeometricRanker.Point> centers){
   cancelVoice();if(!glideAllowed())return;InputConnection c=getCurrentInputConnection();if(c==null)return;
-  List<GeometricRanker.Candidate> candidates=ranker.rank(trace,centers,PersonalLexicon.merge(SeedLexicon.words(lang==KeyboardLayout.Language.AR),settings.personalWords(lang==KeyboardLayout.Language.AR)),3);
-  if(candidates.isEmpty()||candidates.get(0).score>2.0)return;
   clearComposition(true);if(c!=getCurrentInputConnection())return;
+  boolean ar=lang==KeyboardLayout.Language.AR,imported=settings.importedDictionary();List<String> personal=settings.personalWords(ar);
+  DictionaryResourceStore resources=dictionaries;long token=++glideGeneration;glidePending=true;
+  TextView status=new TextView(this);status.setText("Recognizing…");status.setTextColor(Color.WHITE);if(strip!=null)strip.addView(status);
+  glideWorker.execute(()->{if(token!=glideGeneration)return;
+   List<GeometricRanker.Candidate> candidates;
+   try{List<String> words=FrequencyLexicon.merge(SeedLexicon.words(ar),personal,imported?resources.words(ar):Collections.emptyList());candidates=ranker.rank(trace,centers,words,3);}
+   catch(RuntimeException e){candidates=Collections.emptyList();}
+   List<GeometricRanker.Candidate> result=candidates;
+   glideMain.post(()->applyGlide(token,c,result));
+  });
+ }
+ private void applyGlide(long token,InputConnection c,List<GeometricRanker.Candidate> candidates){
+  if(token!=glideGeneration)return;glidePending=false;if(strip!=null)strip.removeAllViews();
+  if(!glideAllowed()||!isInputViewShown()||c!=getCurrentInputConnection()||candidates.isEmpty()||candidates.get(0).score>2.0)return;
   String word=candidates.get(0).word+(settings.space()?" ":"");
   composingConnection=c;composed=word;confirmed=false;
   if(!c.setComposingText(word,1)){clearComposition(false);return;}
@@ -188,6 +211,7 @@ public final class ZeroImeService extends InlineImeService {
  }
  @Override public void onUpdateSelection(int oldSelStart,int oldSelEnd,int newSelStart,int newSelEnd,int candidatesStart,int candidatesEnd){
   super.onUpdateSelection(oldSelStart,oldSelEnd,newSelStart,newSelEnd,candidatesStart,candidatesEnd);
+  if(glidePending&&(oldSelStart!=newSelStart||oldSelEnd!=newSelEnd))cancelGlide();
   if((voice.busy()||!pendingVoice.isEmpty())&&(oldSelStart!=newSelStart||oldSelEnd!=newSelEnd))cancelVoice();
   if(composingConnection==null)return;
   if(composingConnection!=getCurrentInputConnection()||!glideAllowed()){clearComposition(false);return;}

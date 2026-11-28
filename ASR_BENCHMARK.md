@@ -6,3 +6,5 @@ Batch 2: CPU whisper-cli runner for verified local model file, private consented
 Batch 3: native whisper.cpp CPU backend and two exact-hash multilingual candidates (Tiny Q5 32.2 MB, Base Q5 59.7 MB) integrated in source. No actual inference or accuracy/latency measurement. See docs/VOICE_INTEGRATION.md.
 
 Batch 5 adds an optional low-cost energy endpoint detector. It rejects isolated transient frames, trims leading/trailing silence, and can stop after 1.2 seconds of detected silence. This is deterministic signal processing, not a trained VAD, and sustained noise may be treated as speech. Its host unit tests do not establish ASR accuracy.
+
+Batch 07: per-session language/thread/endpoint controls and pause/resume source integration; same fixed Tiny/Base models. Actual mixed-language WER, model runtime, latency and mic resume behavior remain unmeasured. Auto remains default.
