@@ -165,12 +165,21 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
         "PREF_ENABLE_CLIPBOARD_HISTORY":"false","PREF_SHOW_LANGUAGE_SWITCH_KEY":"true","PREF_SHOW_EMOJI_KEY":"true",
         "PREF_GESTURE_INPUT":"false","PREF_ALWAYS_INCOGNITO_MODE":"false",
         "PREF_KEY_USE_PERSONALIZED_DICTS":"false",
-        "PREF_USE_CONTACTS":"false"
+        "PREF_USE_CONTACTS":"false",
+        # Owner's Gboard reference: clean key faces, always-visible digits,
+        # suggestions without forced correction, and no double-space period.
+        "PREF_SHOW_NUMBER_ROW":"true","PREF_SHOW_HINTS":"false",
+        "PREF_KEY_USE_DOUBLE_SPACE_PERIOD":"false","PREF_SOUND_ON":"true"
     }.items():
         source=defaults.read_text(encoding="utf-8")
         source,n=re.subn(r"(?m)^(\s*const val "+key+r" = )(?:true|false)$",lambda m:m[1]+value,source)
         if n!=1: raise ValueError("unexpected default: "+key)
         defaults.write_text(source,encoding="utf-8")
+    replace(defaults, "const val PREF_KEYPRESS_SOUND_VOLUME = -0.01f", "const val PREF_KEYPRESS_SOUND_VOLUME = 0.19f")
+    # Compact tablet portrait default: explicit user height choices remain authoritative.
+    replace(defaults, "        val dm = context.resources.displayMetrics",
+        """        val dm = context.resources.displayMetrics
+        PREF_KEYBOARD_HEIGHT_SCALE[0] = if (context.resources.configuration.smallestScreenWidthDp >= 600) 0.82f else 1.0f""")
     source=defaults.read_text(encoding="utf-8")
     source,n=re.subn(r'(?m)^    const val PREF_ADDITIONAL_SUBTYPES = .*?\n            .*?\n            .*?$', '    const val PREF_ADDITIONAL_SUBTYPES = ""',source)
     if n!=1: raise ValueError("additional subtype defaults changed")
