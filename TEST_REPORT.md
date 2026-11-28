@@ -31,3 +31,5 @@ Batch 04 local execution: javac 21.0.12.1 -encoding UTF-8 compiled LayoutProfile
 
 ## Work handoff / runtime probe
 Current HEAD read-back 198a23db; prior milestone report above confirms build/lint/unit evidence from Work. Owner screenshot indicates emulator boot/ADB progress but no confirmed install or completed runtime test. Current chat environment has no adb or Android SDK/Gradle commands; remote Git DNS fails. Added debug-only fixture and ADB runner, not yet built or run against Android. Helper unit tests authored; execution not claimed here. See docs/ANDROID_RUNTIME_PROBE.md.
+
+Runtime milestone setup: verified GitHub HEAD before edits and checked prior Work handoff. Current container independently confirmed java/javac available, adb/gradle/SDK missing, GitHub git remote DNS fails. Added API33 KVM workflow and marker; no emulator run or new APK verified. Probe writes explicit failed check and captures normal synthetic-field screenshot only. No additional tests claimed executed at this point.

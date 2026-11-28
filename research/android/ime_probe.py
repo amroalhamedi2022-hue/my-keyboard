@@ -61,7 +61,11 @@ class Probe:
         self.adb("shell", "input", "tap", str(x), str(y))
 
     def check(self, name, predicate):
-        self.wait(predicate)
+        try:
+            self.wait(predicate)
+        except Exception:
+            self.results.append({"test": name, "status": "fail"})
+            raise
         self.results.append({"test": name, "status": "pass"})
         print("PASS", name, flush=True)
 
@@ -80,9 +84,10 @@ class Probe:
         previous = self.adb("shell", "settings", "get", "secure", "default_input_method").decode().strip()
         try:
             self.adb("install", "-r", str(apk))
+            self.adb("shell", "am", "force-stop", PACKAGE)
             self.adb("shell", "ime", "enable", IME)
             self.adb("shell", "ime", "set", IME)
-            self.adb("shell", "am", "force-stop", PACKAGE)
+            self.adb("shell", "settings", "put", "secure", "show_ime_with_hard_keyboard", "1")
             self.adb("shell", "am", "start", "-W", "-n", ACTIVITY)
             self.focus("zero_probe_normal")
             self.check("normal voice and toolbar available", lambda x: bool(matching(x,"Offline voice typing")) and bool(matching(x,"Copy selected")))
@@ -95,6 +100,7 @@ class Probe:
             self.tap("Switch language")
             self.tap("ض")
             self.check("mixed Arabic and English manual text", lambda x: any(n.get("text")=="qwض" for n in matching(x,"zero_probe_normal")))
+            self.output.with_name("normal-synthetic.png").write_bytes(self.adb("exec-out","screencap","-p"))
             self.focus("zero_probe_password")
             self.check("password hides voice and editor toolbar", lambda x: not matching(x,"Offline voice typing") and not matching(x,"Copy selected") and not any(n.get("content-desc","").startswith("Glide candidate ") for n in x.iter("node")))
             self.focus("zero_probe_numeric")
@@ -102,8 +108,13 @@ class Probe:
             self.focus("zero_probe_private")
             self.check("no-personalized-learning editor hides voice", lambda x: not matching(x,"Offline voice typing"))
         finally:
-            if previous and previous != "null" and previous != IME:
-                self.adb("shell","ime","set",previous)
+            try:
+                if previous and previous != "null" and previous != IME:
+                    self.adb("shell","ime","set",previous)
+                self.adb("shell","rm","-f","/data/local/tmp/zero_probe.xml")
+            except (subprocess.SubprocessError, OSError):
+                # Cleanup must not mask the primary test failure.
+                pass
 
     def report(self, error=None):
         data={"serial": self.serial,"checks":self.results,"error":error,

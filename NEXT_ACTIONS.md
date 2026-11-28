@@ -13,3 +13,5 @@ Batch 3: build native + Android, test actual recording, local inference and inpu
 Batch 04: test adaptive profiles and split glide on physical tablet, validate editor actions and selection callbacks, verify native abort and voice review on device. Continue licensed production lexicon, real bilingual ASR benchmark, warm context lifecycle, streaming, Autofill.
 
 Work handoff: resume existing Android 13 emulator, verify get-state=device and sys.boot_completed=1. If available, first test the existing 8.9 MB debug artifact without rebuilding. For the new automated probe, reuse next deliberate debug build and run docs/ANDROID_RUNTIME_PROBE.md. Preserve real logs/results. Do not claim runtime success until observed.
+
+Added independent API33 KVM CI runtime milestone and explicit trigger marker. Check Actions for actual run, failure logs and artifacts. If no run started, dispatch the runtime workflow on its branch once it is registered on default branch, or execute existing emulator probe in Work. Do not merge unverified source simply to start CI. No repeated build until evidence warrants.

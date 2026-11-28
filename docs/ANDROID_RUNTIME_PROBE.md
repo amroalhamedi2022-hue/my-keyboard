@@ -6,3 +6,6 @@ Commands:
     ./gradlew :app:assembleDebug
     python3 research/android/ime_probe.py --serial emulator-5554 --apk app/build/outputs/apk/debug/app-debug.apk --report /tmp/zero-probe.json
 Run only on a disposable emulator with synthetic data. Review results and fix failing checks; no microphone/model inference, actual glide accuracy, password-provider compatibility or latency claimed. UIAutomator availability and accessibility nodes can vary by device. No real screenshots created.
+
+## Independent CI runtime milestone
+Added .github/workflows/runtime-validation.yml, explicitly triggered by its own marker or manual dispatch, not every commit. Uses GitHub-hosted Ubuntu with KVM and a pinned ReactiveCircus emulator runner v2.34.0 (1dcd0090116d15e7c562f8db72807de5e036a4ed), API33 x86_64 Google APIs image. Builds once, checks merged APK permission dump for INTERNET, runs debug probe and uploads synthetic normal-field screenshot, JSON, build reports and debug APK separately. No actual run observed yet. Prior Work emulator is not accessible from normal chat. GitHub connector's workflow lookup only returns PR-triggered runs; lack of results does not prove push workflow did not run. See Actions directly.
