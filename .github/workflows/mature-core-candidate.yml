@@ -147,6 +147,8 @@ jobs:
           echo '59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e  /tmp/zero-dictation/english.wav' | sha256sum -c -
       - name: Real mature keyboard touch and microphone smoke
         if: github.event.label.name == 'zero-mature-voice-candidate' || github.event.label.name == 'zero-mature-glide-candidate' || github.event.label.name == 'zero-mature-runtime-retry'
+        env:
+          ZERO_ADAPTIVE_SETTINGS_SMOKE: ${{ github.event.label.name != 'zero-mature-runtime-retry' }}
         uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed
         with:
           api-level: 33

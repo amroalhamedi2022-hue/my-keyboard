@@ -15,6 +15,7 @@ FIXTURE="com.zerokeyboard.ime/.ImeProbeActivity"
 MICROPHONE = -233
 DISCARD = -10001
 RECORDING = -10002
+SETTINGS = PACKAGE + "/helium314.keyboard.settings.SettingsActivity"
 
 def adb(*args):
     return subprocess.run(["adb","-s","emulator-5554",*args],check=True,capture_output=True,timeout=45).stdout
@@ -79,10 +80,37 @@ def find_node(predicate):
     return next((node for node in tree().iter("node") if predicate(node)), None)
 
 def touch_node(node):
+    left, top, right, bottom = bounds(node)
+    adb("shell", "input", "tap", str((left + right) // 2), str((top + bottom) // 2))
+
+def bounds(node):
     coords = tuple(map(int, re.findall(r"\d+", node.get("bounds", ""))))
     assert len(coords) == 4, node.attrib
-    left, top, right, bottom = coords
-    adb("shell", "input", "tap", str((left + right) // 2), str((top + bottom) // 2))
+    return coords
+
+def named(text):
+    return find_node(lambda node: text in (node.get("text"), node.get("content-desc")))
+
+def adaptive_settings_smoke(out, checks):
+    adb("shell", "am", "start", "-W", "-n", SETTINGS)
+    wait(lambda: named("Zero Voice & Glide"))
+    assert named("Try the keyboard") is None, "phone layout unexpectedly shows tablet preview"
+    snapshot(out, "settings-phone")
+    try:
+        adb("shell", "wm", "size", "1600x2560")
+        adb("shell", "wm", "density", "240")
+        preview = wait(lambda: named("Try the keyboard"))
+        sidebar = wait(lambda: named("Appearance"))
+        assert bounds(sidebar)[2] < bounds(preview)[0], "preview is not alongside the category list"
+        snapshot(out, "settings-tablet-preview")
+        touch_node(sidebar)
+        wait(lambda: named("Colors (night)"))
+        assert named("Zero Voice & Glide") is not None, "category list disappeared"
+        snapshot(out, "settings-tablet-appearance")
+        checks.append("phone settings and tablet category/detail panes exposed on Android 13")
+    finally:
+        adb("shell", "wm", "density", "reset")
+        adb("shell", "wm", "size", "reset")
 
 def permission_button(name):
     return find_node(lambda n: n.get("resource-id", "").endswith(":id/" + name))
@@ -134,14 +162,17 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument("--candidate",type=Path,required=True);p.add_argument("--fixture",type=Path,required=True);p.add_argument("--out",type=Path,required=True)
     p.add_argument("--english-wav", type=Path)
+    p.add_argument("--adaptive-settings", action="store_true")
     p.add_argument("--emulator-grpc-port", type=int, default=8554)
     a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True);result={"checks":[]}
     try:
         adb("install","-r",str(a.fixture));adb("install","-r",str(a.candidate))
-        adb("shell","am","start","-W","-n",PACKAGE+"/helium314.keyboard.settings.SettingsActivity")
+        adb("shell","am","start","-W","-n",SETTINGS)
         wait(lambda:IME in adb("shell","ime","list","-a","-s").decode())
         adb("shell","ime","enable",IME);adb("shell","ime","set",IME)
         adb("shell","settings","put","secure","show_ime_with_hard_keyboard","1")
+        if a.adaptive_settings:
+            adaptive_settings_smoke(a.out, result["checks"])
         adb("shell","am","start","-W","-n",FIXTURE)
         snapshot(a.out,"fixture-before-focus")
         focus("zero_probe_normal")

@@ -8,6 +8,9 @@ args=(
     --fixture "$fixture"
     --out candidate-results/runtime
 )
+if [[ ${ZERO_ADAPTIVE_SETTINGS_SMOKE:-false} == true ]]; then
+    args+=(--adaptive-settings)
+fi
 
 replay_dir=/tmp/zero-dictation
 if [[ -f "$replay_dir/english.wav" ]]; then

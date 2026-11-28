@@ -20,7 +20,8 @@ feature. Previous emulator results apply to their exact source and payload.
 | E | Adaptive light/dark and two Zero Glass palettes | Implemented but untested | Candidate 105 adds rounded defaults to existing renderer. Check contrasts, legacy prefs, portrait and landscape screenshots. |
 | E | Key motion, trail, visual consistency across symbols, panels and settings | In development | Capture matching screens on target tablet and phone. No compositor measurement. |
 | F | Settings categories, search and themes | Implemented but untested | Mature settings shipped. Confirm each changed control affects the IME. |
-| F | Adaptive two-pane settings and full bilingual UI | In development | Arabic theme and permission resources added. Layout and complete localization remain open. |
+| F | Adaptive two-pane settings | Implemented but untested | Wide settings pair a persistent category list with the current settings screen and a live typing field on the home screen. The phone keeps single-pane navigation. A tablet-sized emulator check is included. |
+| F | Full bilingual UI | In development | Unmodified upstream resources and added Arabic labels are used where available. Voice settings and the full locale audit remain open. |
 | G | Clipboard text, pinning, history and privacy | Tested with limitations | 0.2.2 includes hardening and passed startup gate. Candidate 105 adds explicit deletion of all saved clips, including pins, and stale-row guards. Runtime retention and editor-switch tests remain open. |
 | G | Editing tools and reorderable toolbar | Implemented but untested | Existing upstream actions and reorder UI. Validate undo/redo, overflow and private behavior. |
 | G | Image clipboard, opt-in screenshot insertion, history search and batch editing | Not started | Require editor MIME support, URI grants and explicit owner access. |
@@ -76,3 +77,8 @@ feature. Previous emulator results apply to their exact source and payload.
   state without capturing editor text or audio. The permission and insertion
   results still require the new run.
 - [Tiny voice and native regression results](../ASR_BENCHMARK.md)
+- The [next two emulator runs](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46150954018)
+  built the candidate. The emulator action split an inline multi-line script before
+  the device probe started. The revised workflow uses a checked-in shell script,
+  pinned Python wheels and a runtime retry path that verifies the previously
+  compiled APK's source and hash before reuse.

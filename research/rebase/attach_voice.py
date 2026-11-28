@@ -54,13 +54,81 @@ toolbar=java/"utils/ToolbarUtils.kt"
 replace(toolbar,'val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {\n    it.name + Separators.KV + false\n}', 'val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {\n    it.name + Separators.KV + (it == VOICE)\n}')
 # Direct access from the mature settings home; does not depend on an editor or microphone button.
 main=app/"src/main/java/helium314/keyboard/settings/screens/MainSettingsScreen.kt"
-replace(main,"        val enabledSubtypes = SubtypeSettings.getEnabledSubtypes(true)", "        val enabledSubtypes = SubtypeSettings.getEnabledSubtypes(true)\n        val zeroContext = LocalContext.current")
+settings=main.parent.parent
+shutil.copy2(zero/"research/rebase/settings/ZeroSettingsLayout.kt", settings)
+replace(main, "import helium314.keyboard.settings.Theme\n",
+        "import helium314.keyboard.settings.Theme\nimport helium314.keyboard.settings.ZeroTypingPreview\n")
+replace(main, "    onClickBack: () -> Unit,\n", "    onClickBack: () -> Unit,\n    wide: Boolean = false,\n")
+replace(main,"        val enabledSubtypes = SubtypeSettings.getEnabledSubtypes(true)", """        if (wide) {
+            ZeroTypingPreview()
+            return@SearchSettingsScreen
+        }
+        val enabledSubtypes = SubtypeSettings.getEnabledSubtypes(true)
+        val zeroContext = LocalContext.current""")
 replace(main,"                if (JniUtils.sHaveGestureLib)",'''                Preference(
-                    name = "Zero Voice & Glide",
-                    description = "Offline speech, models and open swipe typing",
+                    name = stringResource(R.string.zero_voice_and_glide),
+                    description = stringResource(R.string.zero_voice_and_glide_description),
                     onClick = { zeroContext.startActivity(android.content.Intent(zeroContext, com.zerokeyboard.ime.VoiceSetupActivity::class.java)) },
                     icon = R.drawable.ic_settings_gesture
                 ) { NextScreenIcon() }
                 if (JniUtils.sHaveGestureLib)''')
+nav=settings/"SettingsNavHost.kt"
+replace(nav, "import androidx.compose.runtime.Composable\n", """import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.currentBackStackEntryAsState
+""")
+replace(nav, """    NavHost(
+        navController = navController,""", """    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val wide = maxWidth >= 720.dp
+        val currentWide = rememberUpdatedState(wide)
+        val sidebarWidth = (maxWidth * 0.31f).coerceIn(224.dp, 288.dp)
+        val activeRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+        Row(Modifier.fillMaxSize()) {
+            if (wide) ZeroSettingsSidebar(
+                activeRoute = activeRoute,
+                onCategory = { route ->
+                    if (route != activeRoute) navController.navigate(route) {
+                        popUpTo(SettingsDestination.Settings)
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.width(sidebarWidth),
+            )
+            NavHost(
+        modifier = Modifier.weight(1f),
+        navController = navController,""")
+replace(nav, "                onClickBack = ::goBack,\n            )\n        }",
+        "                onClickBack = ::goBack,\n                wide = currentWide.value,\n            )\n        }",1)
+replace(nav, '''    if (target.value != SettingsDestination.Settings/* && target.value != navController.currentBackStackEntry?.destination?.route*/)
+        navController.navigate(route = target.value)
+''', '''            LaunchedEffect(target.value) {
+                if (target.value != SettingsDestination.Settings) {
+                    navController.navigate(route = target.value)
+                }
+            }
+        }
+    }
+''')
+source=nav.read_text()
+nav_start=source.index("        modifier = Modifier.weight(1f),")
+nav_end=source.index("            LaunchedEffect(target.value)", nav_start)
+source=source[:nav_start]+"".join("        "+line if line.strip() else line
+                                 for line in source[nav_start:nav_end].splitlines(keepends=True))+source[nav_end:]
+nav.write_text(source)
+appearance=main.parent/"AppearanceScreen.kt"
+replace(appearance, """            items,
+            Defaults.PREF_ICON_STYLE
+        ) {
+            if (it != KeyboardTheme.STYLE_HOLO)""", """            items,
+            Defaults.PREF_THEME_STYLE
+        ) {
+            if (it != KeyboardTheme.STYLE_HOLO)""")
 with (upstream/"ZERO-PROVENANCE.txt").open("a") as f:f.write("Voice adapter enabled: Zero local JNI library, private model storage, editor-bound recording and preview. Runtime verification pending.\n")
 print("Zero local voice module and service adapter attached.")

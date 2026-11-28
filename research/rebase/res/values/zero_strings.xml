@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="zero_voice_and_glide">Zero Voice &amp; Glide</string>
+    <string name="zero_voice_and_glide_description">Offline dictation and swipe typing</string>
+    <string name="zero_try_keyboard">Try the keyboard</string>
     <string name="theme_name_zero_glass_light">Zero Glass Light</string>
     <string name="theme_name_zero_glass_dark">Zero Glass Dark</string>
     <string name="zero_voice_permission_granted">Microphone allowed. Tap the mic again to dictate.</string>
