@@ -1,0 +1,122 @@
+name: Zero owner launch hotfix
+on:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  release:
+    if: github.event.label.name == 'zero-launch-hotfix' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: HeliBorg/HeliBoard
+          ref: f8ec91a982835911cc224fa99434c3396d4cd562
+          path: upstream/heliboard
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install pinned Android packages
+        shell: bash
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$MANAGER" ]; then MANAGER="$(find "$SDK/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"; fi
+          test -x "$MANAGER"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          "$MANAGER" --sdk_root="$SDK" --licenses < <(yes) >/dev/null
+          "$MANAGER" --sdk_root="$SDK" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.0.13004108' 'cmake;3.22.1'
+      - name: Prepare exact released core with launcher fix
+        run: |
+          python3 research/rebase/prepare_candidate.py upstream/heliboard .
+          python3 research/rebase/attach_voice.py upstream/heliboard .
+          python3 research/rebase/attach_glide.py upstream/heliboard .
+          python3 research/rebase/check_prepared.py upstream/heliboard
+          git -C upstream/heliboard diff --check
+      - name: Assemble unsigned non-debug release and source
+        run: |
+          # Non-minified release for initial migration, NOT a debug APK. Avoid JNI shrinker issues.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("upstream/heliboard/app/build.gradle.kts")
+          s=p.read_text()
+          old="release {\n            isMinifyEnabled = true"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,"release {\n            isMinifyEnabled = false"))
+          PY
+          (cd upstream/heliboard && ./gradlew :app:assembleRelease --no-daemon)
+          mkdir -p owner-release/classes
+          APK="$(find upstream/heliboard/app/build/outputs/apk/release -name '*unsigned.apk' -print -quit)"
+          test -f "$APK"
+          TOOL="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOL/zipalign" -P 16 -f 4 "$APK" owner-release/Zero-Keyboard-0.2.1-engine-preview-unsigned.apk
+          "$TOOL/zipalign" -c -P 16 4 owner-release/Zero-Keyboard-0.2.1-engine-preview-unsigned.apk
+          "$TOOL/aapt" dump badging owner-release/*.apk > owner-release/badging.txt
+          "$TOOL/aapt" dump permissions owner-release/*.apk > owner-release/permissions.txt
+          grep -q "package: name='com.zerokeyboard.ime' versionCode='103'" owner-release/badging.txt
+          ! grep -E 'android.permission.(INTERNET|READ_CONTACTS)' owner-release/permissions.txt
+          JAR="$(find "$HOME/.gradle/caches/modules-2/files-2.1/com.android.tools.build/apksig" -name 'apksig-8.10.1.jar' -print -quit)"
+          test -f "$JAR"
+          cp "$JAR" owner-release/
+          javac -encoding UTF-8 -cp "$JAR" -d owner-release/classes research/release/SignRelease.java
+          cp upstream/heliboard/LICENSE owner-release/LICENSE
+          cp upstream/heliboard/ZERO-PROVENANCE.txt owner-release/
+          git rev-parse HEAD > owner-release/source-commit.txt
+          (cd owner-release && sha256sum *.apk *.jar > checksums.sha256)
+          # Provide complete corresponding modified source and build scripts for the GPL derivative.
+          tar -czf owner-release/zero-mature-corresponding-source.tar.gz --exclude=.git --exclude=.gradle --exclude=.cxx --exclude=build --exclude=local.properties --exclude=zero-staged-voice -C upstream/heliboard .
+      - name: Retrieve previous unsigned owner release
+        uses: actions/download-artifact@v4
+        with:
+          name: zero-mature-owner-unsigned-kit
+          run-id: 46139499671
+          github-token: ${{ github.token }}
+          path: old-owner
+      - name: Sign test copies with ephemeral key for actual release runtime checks
+        run: |
+          mkdir -p launch-evidence
+          keytool -genkeypair -keystore /tmp/zero-ci.p12 -storetype PKCS12 -alias test -keyalg RSA -keysize 2048 -validity 2 -storepass ci-test-only-123 -dname 'CN=Zero CI Test Only'
+          TOOL="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOL/apksigner" sign --ks /tmp/zero-ci.p12 --ks-pass pass:ci-test-only-123 --out /tmp/zero-old.apk old-owner/Zero-Keyboard-0.2.0-engine-preview-unsigned.apk
+          "$TOOL/apksigner" sign --ks /tmp/zero-ci.p12 --ks-pass pass:ci-test-only-123 --out /tmp/zero-new.apk owner-release/Zero-Keyboard-0.2.1-engine-preview-unsigned.apk
+          "$TOOL/apksigner" verify /tmp/zero-new.apk
+      - name: Enable KVM
+        run: |
+          test -e /dev/kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Actual release upgrade and fresh launch gate on Android 13
+        uses: reactivecircus/android-emulator-runner@1dcd0090116d15e7c562f8db72807de5e036a4ed
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-linux-hw-accel: false
+          script: python3 research/rebase/release_launch_probe.py /tmp/zero-old.apk /tmp/zero-new.apk launch-evidence
+      - name: Publish gated unsigned kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: zero-0.2.1-owner-unsigned-kit
+          path: owner-release/
+          if-no-files-found: error
+      - name: Preserve runtime evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zero-0.2.1-launch-evidence
+          path: launch-evidence/
+          if-no-files-found: warn

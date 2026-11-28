@@ -26,8 +26,8 @@ def prepare(upstream, zero):
     for before,after in [
         ('applicationId = "helium314.keyboard"','applicationId = "com.zerokeyboard.ime"'),
         ('minSdk = 21','minSdk = 29'),
-        ('versionCode = 3603','versionCode = 102'),
-        ('versionName = "3.6"','versionName = "0.2.0-engine-preview"'),
+        ('versionCode = 3603','versionCode = 103'),
+        ('versionName = "3.6"','versionName = "0.2.1-engine-preview"'),
         ('listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")','listOf("arm64-v8a", "x86_64")'),
     ]:
         replace(gradle,before,after)
@@ -39,7 +39,11 @@ def prepare(upstream, zero):
     replace(manifest,'android:defaultToDeviceProtectedStorage="true"','android:defaultToDeviceProtectedStorage="false"')
     replace(manifest,'android:directBootAware="true"','android:directBootAware="false"',2)
     replace(manifest,'    <uses-permission android:name="android.permission.READ_CONTACTS" />\n','')
-    replace(manifest,'android:label="@string/english_ime_name"','android:label="Zero Keyboard"',2)
+    # Keep label resource references: WelcomeWizard previously read labelRes, which is zero for literal labels.
+    replace(app/"src/main/res/values/donottranslate.xml",'<string name="english_ime_name" translatable="false">HeliBoard</string>','<string name="english_ime_name" translatable="false">Zero Keyboard</string>')
+    replace(app/"src/main/res/values/strings.xml",'<string name="ime_settings">HeliBoard Settings</string>','<string name="ime_settings">Zero Keyboard Settings</string>')
+    wizard=app/"src/main/java/helium314/keyboard/settings/WelcomeWizard.kt"
+    replace(wizard,"val appName = stringResource(ctx.applicationInfo.labelRes)",'val appName = ctx.applicationInfo.loadLabel(ctx.packageManager).toString().ifBlank { "Zero Keyboard" }')
     wrapper = app / "src/main/java/com/zerokeyboard/ime/ZeroImeService.java"
     wrapper.parent.mkdir(parents=True,exist_ok=True)
     wrapper.write_text("""// SPDX-License-Identifier: GPL-3.0-only
@@ -142,6 +146,8 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {}
     assert "android.permission.INTERNET" not in permissions
     assert "android.permission.READ_CONTACTS" not in permissions
     assert root.find("application").get(NS+"allowBackup")=="false"
+    assert root.find("application").get(NS+"label")=="@string/english_ime_name"
+    assert "stringResource(ctx.applicationInfo.labelRes)" not in wizard.read_text()
     assert root.find("application").get(NS+"defaultToDeviceProtectedStorage")=="false"
     assert root.find("application").get(NS+"directBootAware")=="false"
     assert any(n.get(NS+"name")==PACKAGE+".ZeroImeService" for n in root.findall("application/service"))
