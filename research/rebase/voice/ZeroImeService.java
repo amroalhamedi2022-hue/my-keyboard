@@ -61,9 +61,10 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {
             return !Settings.getInstance().getCurrent().mIncognitoModeEnabled && !prefs().getBoolean("incognito",false);
         }catch(RuntimeException e){return false;}
     }
-    private void openVoiceSetup(){
+    private void openVoiceSetup(boolean requestMic){
         cancelVoice(); Intent i=new Intent(this,VoiceSetupActivity.class); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(i);
+        i.putExtra("quick_mic",requestMic);
+        try{startActivity(i);}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"Voice setup unavailable",Toast.LENGTH_SHORT).show();}
     }
     private void toggleVoice(){
         if(!allowed()){Toast.makeText(this,"Voice is disabled in private or incognito fields",Toast.LENGTH_SHORT).show();return;}
@@ -72,12 +73,14 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {
         SharedPreferences p=prefs();
         ModelCatalog model=p.getBoolean("voice_base",false)?ModelCatalog.BASE:ModelCatalog.TINY;
         ModelStore models=new ModelStore(storage());
-        if(!p.getBoolean("voice_enabled",false)||!models.installed(model)||checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){openVoiceSetup();return;}
-        if(!NativeWhisper.available()){Toast.makeText(this,"Offline voice engine unavailable",Toast.LENGTH_SHORT).show();return;}
+        if(!p.getBoolean("voice_enabled",true)){openVoiceSetup(false);return;}
+        if(!NativeWhisper.available()){Toast.makeText(this,"Offline voice engine unavailable in this build",Toast.LENGTH_LONG).show();return;}
+        if(!models.available(model)){openVoiceSetup(false);return;}
+        if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){openVoiceSetup(true);return;}
         target=getCurrentInputConnection(); if(target==null)return;
         if(!showPanel()){cancelVoice();return;}
         long id=++generation;
-        VoiceOptions options=new VoiceOptions(p.getInt("voice_language",0),p.getInt("voice_threads",4),p.getBoolean("voice_endpoint",false),p.getInt("voice_silence_ms",1200));
+        VoiceOptions options=new VoiceOptions(p.getInt("voice_language",0),p.getInt("voice_threads",4),p.getBoolean("voice_endpoint",true),p.getInt("voice_silence_ms",1200));
         voice.start(storage(),models,model,options,p.getBoolean("voice_continuous",false),new VoiceSession.Listener(){
             public void state(String state){
                 if(id!=generation||panel==null)return;
@@ -94,7 +97,7 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {
             public void result(String text){
                 if(id!=generation||panel==null||!allowed()||target!=getCurrentInputConnection()){cancelVoice();return;}
                 pending=text; preview.setText(text); pause.setEnabled(false);stop.setEnabled(false);insert.setEnabled(!text.isEmpty());
-                if(!prefs().getBoolean("voice_review",true))commitPending();
+                if(!prefs().getBoolean("voice_review",false))commitPending();
             }
         });
     }

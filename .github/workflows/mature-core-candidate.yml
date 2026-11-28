@@ -56,6 +56,14 @@ jobs:
           python3 research/rebase/prepare_candidate.py upstream/heliboard .
           if [ "${{ github.event.label.name }}" = 'zero-mature-voice-candidate' ] || [ "${{ github.event.label.name }}" = 'zero-mature-glide-candidate' ] || [ "${{ github.event.label.name }}" = 'zero-mature-owner-release' ]; then
             python3 research/rebase/attach_voice.py upstream/heliboard .
+            # Package the bilingual Tiny model at build time; never grant the IME network access.
+            MODEL_DIR=upstream/heliboard/zero-voice/src/main/assets/zero-voice-models
+            mkdir -p "$MODEL_DIR"
+            MODEL="$MODEL_DIR/ggml-tiny-q5_1.bin"
+            curl --fail --location --retry 3 --max-time 240 --output "$MODEL" 'https://huggingface.co/ggerganov/whisper.cpp/resolve/0b364b566045a405be7225ee1e415a073e04da77/ggml-tiny-q5_1.bin'
+            test "$(wc -c < "$MODEL")" = 32152673
+            echo "818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7  $MODEL" | sha256sum --check
+            cp app/src/main/assets/licenses/whisper-ggml-MIT.txt "$MODEL_DIR/NOTICE-whisper-MIT.txt"
             if [ "${{ github.event.label.name }}" = 'zero-mature-glide-candidate' ] || [ "${{ github.event.label.name }}" = 'zero-mature-owner-release' ]; then
               python3 research/rebase/attach_glide.py upstream/heliboard .
             fi

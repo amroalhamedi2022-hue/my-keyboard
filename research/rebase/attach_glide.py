@@ -40,5 +40,5 @@ replace(service,"if(voice!=null)voice.close(); super.onDestroy();","if(voice!=nu
 for old in ["super.onStartInput(info,restarting);","super.onFinishInputView(finishing);","super.onFinishInput();","super.onWindowHidden();","super.onConfigurationChanged(c);","super.onCurrentInputMethodSubtypeChanged(subtype);"]:
     replace(service,old,"if(glide!=null)glide.cancel(); "+old)
 setup=package/"VoiceSetupActivity.java"
-replace(setup,'toggle(root,"Enable offline voice","voice_enabled",false);','toggle(root,"Experimental open glide (3+ distinct letters)","mature_glide_enabled",false);\n        toggle(root,"Enable offline voice","voice_enabled",false);')
+replace(setup,'toggle(root,"Enable offline voice","voice_enabled",true);','toggle(root,"Experimental open glide (3+ distinct letters)","mature_glide_enabled",false);\n        toggle(root,"Enable offline voice","voice_enabled",true);')
 with (root/"ZERO-PROVENANCE.txt").open("a") as f:f.write("Optional original geometric glide attached; CC BY-SA dictionaries preserved with NOTICE. Not neural or validated against real traces.\n")
