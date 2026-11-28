@@ -23,6 +23,10 @@ public final class ImeProbeActivity extends Activity {
   settings.set("glide_ar",true);
   settings.set("incognito",false);
   settings.set("editor_tools",true);
+  settings.set("emoji_panel",true);
+  settings.set("clipboard_history",true);
+  android.content.ClipboardManager clipboard=getSystemService(android.content.ClipboardManager.class);
+  if(clipboard!=null)clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Synthetic probe text"," probe"));
   field(root,"zero_probe_normal",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE,0);
   field(root,"zero_probe_password",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD,0);
   field(root,"zero_probe_numeric",InputType.TYPE_CLASS_NUMBER,0);

@@ -1,6 +1,8 @@
 name: Android 13 runtime milestone
 on:
   workflow_dispatch:
+  pull_request:
+    types: [labeled]
   push:
     branches: ['feature/zero-ime-foundation', 'main']
     paths: ['.github/runtime-milestone.txt']
@@ -11,6 +13,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   android13:
+    if: github.event_name != 'pull_request' || (github.event.label.name == 'zero-runtime-milestone' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -42,6 +45,10 @@ jobs:
           javac -encoding UTF-8 -d /tmp/zero-batch6 app/src/main/java/com/zerokeyboard/ime/glide/PersonalLexicon.java app/src/main/java/com/zerokeyboard/ime/glide/GeometricRanker.java app/src/main/java/com/zerokeyboard/ime/tools/ClipboardHistory.java research/tools/Batch6Smoke.java research/glide/RankerEquivalence.java
           java -ea -cp /tmp/zero-batch6 Batch6Smoke
           java -ea -cp /tmp/zero-batch6 RankerEquivalence
+      - name: Generate JNI header for review
+        run: |
+          mkdir -p runtime-results
+          javac -encoding UTF-8 -h runtime-results -d /tmp/zero-jni app/src/main/java/com/zerokeyboard/ime/voice/VoiceOptions.java app/src/main/java/com/zerokeyboard/ime/voice/NativeWhisper.java
       - name: Build once for runtime milestone
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon
       - name: Inspect debug APK
