@@ -45,6 +45,11 @@ jobs:
         run: |
           javac -encoding UTF-8 -d /tmp/zero-gate research/rebase/glide/GestureGate.java research/rebase/glide/GestureGateSmoke.java
           java -cp /tmp/zero-gate GestureGateSmoke
+      - name: Voice interruption recovery regression
+        run: |
+          V=app/src/main/java/com/zerokeyboard/ime/voice
+          javac -encoding UTF-8 -d /tmp/zero-recovery "$V/AudioSegments.java" "$V/SpeechWindow.java" "$V/SegmentedDecoder.java" research/voice/RecoverySmoke.java
+          java -cp /tmp/zero-recovery RecoverySmoke
       - name: Prepare Zero engine source
         run: |
           python3 research/rebase/audit_baseline.py upstream/heliboard candidate-results
