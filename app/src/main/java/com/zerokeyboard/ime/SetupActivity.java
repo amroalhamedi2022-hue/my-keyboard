@@ -20,6 +20,7 @@ public final class SetupActivity extends Activity {
  private boolean dark;
  private int paper,card,ink,secondary,accent;
  private LinearLayout page,sections;
+ private LinearLayout voiceSection;
  private ScrollView scroll;
  @Override public void onCreate(Bundle state) {
   super.onCreate(state);
@@ -69,7 +70,7 @@ public final class SetupActivity extends Activity {
   range(root,"Gesture trail width",1,8,settings.trailWidth(),n->settings.number("trail_width",n));
   toggle(root,"Key vibration",settings.keyHaptic(),settings,"key_haptic");
   toggle(root,"Key click sound",settings.keySound(),settings,"key_sound");
-  root=section("Voice typing","Models · permissions · local transcription");
+  root=section("Voice typing","Models · permissions · local transcription");voiceSection=root;
   models=new ModelStore(this);modelStatus=new TextView(this);root.addView(modelStatus);refreshModels();
   toggle(root,"Enable experimental offline voice",settings.voice(),settings,"voice_enabled");
   toggle(root,"Use Base rather than Tiny model",settings.model()==ModelCatalog.BASE,settings,"voice_base");
@@ -84,24 +85,24 @@ public final class SetupActivity extends Activity {
   toggle(root,"Review dictated text before insertion",settings.voiceReview(),settings,"voice_review");
 
   Button mic=new Button(this);mic.setText(R.string.grant_microphone);mic.setOnClickListener(v->{if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},42);});root.addView(mic);
-  Button getModel=new Button(this);getModel.setText("Get selected voice model (external browser)");getModel.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"+settings.model().filename)));}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"No browser installed",Toast.LENGTH_SHORT).show();}});root.addView(getModel);
+  Button getModel=new Button(this);getModel.setText("Get selected voice model (external browser)");getModel.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://huggingface.co/ggerganov/whisper.cpp/resolve/"+(settings.model()==ModelCatalog.TINY?"0b364b566045a405be7225ee1e415a073e04da77":"f281eb45af861ab5e5297d23694b7d46e090c02c")+"/"+settings.model().filename)));}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"No browser installed",Toast.LENGTH_SHORT).show();}});root.addView(getModel);
   Button imp=new Button(this);imp.setText(R.string.import_model);imp.setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");startActivityForResult(i,43);});root.addView(imp);
   for(ModelCatalog model:ModelCatalog.values()){Button del=new Button(this);del.setText(getString(R.string.remove_model,model.name()));del.setOnClickListener(v->{models.delete(model);refreshModels();});root.addView(del);}
   root=section("Layout & size","Phone · tablet · portrait · landscape");for(boolean tablet:new boolean[]{false,true})for(boolean landscape:new boolean[]{false,true})profile(root,settings,tablet,landscape);
-  styleTree(page);scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(paper);scroll.addView(page);setContentView(scroll);
+  styleTree(page);scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(paper);scroll.addView(page);setContentView(scroll);getWindow().setStatusBarColor(paper);getWindow().setNavigationBarColor(paper);getWindow().getDecorView().setSystemUiVisibility(dark?0:android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);if("voice".equals(getIntent().getStringExtra("section"))&&voiceSection!=null){android.view.View shell=(android.view.View)voiceSection.getParent();((LinearLayout)shell).getChildAt(0).performClick();scroll.post(()->scroll.smoothScrollTo(0,shell.getTop()+sections.getTop()));}
  }
  private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
  private android.graphics.drawable.GradientDrawable rounded(int color,int radius){android.graphics.drawable.GradientDrawable d=new android.graphics.drawable.GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
  private LinearLayout section(String title,String subtitle){
   LinearLayout shell=new LinearLayout(this);shell.setOrientation(LinearLayout.VERTICAL);shell.setPadding(dp(16),dp(8),dp(16),dp(8));shell.setBackground(rounded(card,18));
   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(12);sections.addView(shell,lp);
-  TextView header=new TextView(this);header.setText(title+"   ›\n"+subtitle);header.setTextColor(ink);header.setTextSize(17);header.setPadding(0,dp(12),0,dp(12));header.setMinHeight(dp(60));shell.addView(header);
+  TextView header=new TextView(this);header.setText(title+"   ›\n"+subtitle);header.setTag(title+"   ›\n"+subtitle);header.setTextColor(ink);header.setTextSize(17);header.setPadding(0,dp(12),0,dp(12));header.setMinHeight(dp(60));shell.addView(header);
   LinearLayout content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);content.setVisibility(android.view.View.GONE);shell.addView(content);
-  header.setOnClickListener(v->{boolean open=content.getVisibility()!=android.view.View.VISIBLE;for(int i=0;i<sections.getChildCount();i++){LinearLayout sibling=(LinearLayout)sections.getChildAt(i);sibling.getChildAt(1).setVisibility(android.view.View.GONE);}content.setVisibility(open?android.view.View.VISIBLE:android.view.View.GONE);header.setText(title+(open?"   ⌄":"   ›")+"\n"+subtitle);});return content;
+  header.setOnClickListener(v->{boolean open=content.getVisibility()!=android.view.View.VISIBLE;for(int i=0;i<sections.getChildCount();i++){LinearLayout sibling=(LinearLayout)sections.getChildAt(i);sibling.getChildAt(1).setVisibility(android.view.View.GONE);TextView other=(TextView)sibling.getChildAt(0);other.setText((String)other.getTag());}content.setVisibility(open?android.view.View.VISIBLE:android.view.View.GONE);header.setText(title+(open?"   ⌄":"   ›")+"\n"+subtitle);});return content;
  }
  private void styleTree(android.view.View v){
-  if(v instanceof Button){Button b=(Button)v;b.setAllCaps(false);b.setTextColor(ink);b.setTextSize(15);b.setStateListAnimator(null);b.setMinHeight(dp(48));b.setPadding(dp(12),dp(8),dp(12),dp(8));b.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x22000000),rounded(dark?0xFF2C3B4C:0xFFE1E9F2,12),null));}
-  else if(v instanceof Switch){Switch sw=(Switch)v;sw.setTextColor(ink);sw.setMinHeight(dp(48));sw.setThumbTintList(new android.content.res.ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},new int[]{accent,0xFF9CAAB8}));}
+  if(v instanceof Switch){Switch sw=(Switch)v;sw.setTextColor(ink);sw.setMinHeight(dp(48));sw.setThumbTintList(new android.content.res.ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},new int[]{accent,0xFF9CAAB8}));}
+  else if(v instanceof Button){Button b=(Button)v;b.setAllCaps(false);b.setTextColor(ink);b.setTextSize(15);b.setStateListAnimator(null);b.setMinHeight(dp(48));b.setPadding(dp(12),dp(8),dp(12),dp(8));b.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x22000000),rounded(dark?0xFF2C3B4C:0xFFE1E9F2,12),null));if(b.getLayoutParams() instanceof LinearLayout.LayoutParams){LinearLayout.LayoutParams lp=(LinearLayout.LayoutParams)b.getLayoutParams();lp.topMargin=dp(5);lp.bottomMargin=dp(5);b.setLayoutParams(lp);}}
   else if(v instanceof EditText){EditText e=(EditText)v;e.setTextColor(ink);e.setHintTextColor(secondary);e.setPadding(dp(12),dp(12),dp(12),dp(12));e.setBackground(rounded(card,12));}
   else if(v instanceof TextView){((TextView)v).setTextColor(ink);}
   else if(v instanceof SeekBar){((SeekBar)v).setProgressTintList(android.content.res.ColorStateList.valueOf(accent));((SeekBar)v).setThumbTintList(android.content.res.ColorStateList.valueOf(accent));}

@@ -65,6 +65,10 @@ jobs:
         run: |
           javac -encoding UTF-8 -d /tmp/compact app/src/main/java/com/zerokeyboard/ime/CompactMetrics.java app/src/main/java/com/zerokeyboard/ime/KeyboardLayout.java research/layout/CompactSmoke.java
           java -ea -cp /tmp/compact CompactSmoke
+      - name: Validate bundled dictionary resources
+        run: |
+          javac -encoding UTF-8 -d /tmp/zero-dict app/src/main/java/com/zerokeyboard/ime/glide/FrequencyLexicon.java research/layout/DictionarySmoke.java
+          java -cp /tmp/zero-dict DictionarySmoke
       - name: Generate JNI header for review
         run: |
           mkdir -p runtime-results
