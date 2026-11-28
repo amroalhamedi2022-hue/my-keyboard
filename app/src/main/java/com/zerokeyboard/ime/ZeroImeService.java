@@ -103,13 +103,13 @@ public final class ZeroImeService extends InlineImeService {
   }
   LinearLayout controls=row();
   if(!policy.numeric){
-   modifier(controls,key(controls,lang==KeyboardLayout.Language.AR?"EN":"ع","Switch language",1.1f,()->{cancelVoice();clearComposition(true);lang=lang==KeyboardLayout.Language.EN?KeyboardLayout.Language.AR:KeyboardLayout.Language.EN;shift=false;capsLock=false;symbols=false;render();}));
+   modifier(controls,key(controls,lang==KeyboardLayout.Language.AR?"EN":"ع","Switch language",1.1f,this::switchLanguage));
    modifier(controls,key(controls,symbols?"ABC":"123","Symbols",1.3f,()->{cancelVoice();clearComposition(true);symbols=!symbols;shift=false;capsLock=false;render();}));
    if(lang==KeyboardLayout.Language.AR&&!symbols)modifier(controls,shiftButton(controls));
    Button comma=key(controls,lang==KeyboardLayout.Language.AR?"،":",","Comma",.65f,()->insert(lang==KeyboardLayout.Language.AR?"،":","));comma.setOnLongClickListener(v->showAlternatives(comma,comma.getText().toString()));
   }
   if(policy.numeric||symbols||lang==KeyboardLayout.Language.AR)modifier(controls,deleteButton(controls));
-  Button space=key(controls,lang==KeyboardLayout.Language.AR?"العربية":"English","Space",4f,()->insert(" "));if(!policy.sensitive&&settings.spaceCursor())space.setOnTouchListener(new SpaceCursor());if(!policy.numeric){Button dot=key(controls,".","Period",.65f,()->insert("."));dot.setOnLongClickListener(v->showAlternatives(dot,"."));}action(key(controls,"↵","Editor action",1.2f,this::enter));
+  Button space=key(controls,lang==KeyboardLayout.Language.AR?"العربية":"English","Space",4f,()->insert(" "));if(!policy.sensitive&&!policy.numeric&&settings.spaceMode()!=SpaceGesture.Mode.OFF)space.setOnTouchListener(new SpaceCursor());if(!policy.numeric){Button dot=key(controls,".","Period",.65f,()->insert("."));dot.setOnLongClickListener(v->showAlternatives(dot,"."));}action(key(controls,"↵","Editor action",1.2f,this::enter));
  }
  private void editorToolbar(LinearLayout tools){
   key(tools,"←","Cursor left",1f,()->moveCursor(KeyEvent.KEYCODE_DPAD_LEFT));
@@ -118,8 +118,10 @@ public final class ZeroImeService extends InlineImeService {
   key(tools,"Copy","Copy selected",1f,()->editorAction(android.R.id.copy));
   key(tools,"Cut","Cut selected",1f,()->editorAction(android.R.id.cut));
   key(tools,"Paste","Paste",1f,()->editorAction(android.R.id.paste));
+  if(settings.showTool("history")){key(tools,"↶","Undo",1f,()->editorAction(android.R.id.undo));key(tools,"↷","Redo",1f,()->editorAction(android.R.id.redo));}
 
  }
+ private void switchLanguage(){cancelVoice();clearComposition(true);lang=lang==KeyboardLayout.Language.EN?KeyboardLayout.Language.AR:KeyboardLayout.Language.EN;shift=false;capsLock=false;symbols=false;render();}
  private void addWeightSpace(LinearLayout row,float weight){row.addView(new View(this),new LinearLayout.LayoutParams(0,1,weight));}
  private void decorate(Button b,int color,int text){GradientDrawable bg=new GradientDrawable();bg.setColor(color);bg.setCornerRadius(dp(style.radius));b.setTextColor(text);b.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(style.press),bg,null));}
  private void modifier(LinearLayout row,Button b){decorate(b,style.modifier,style.text);b.setTextSize(Math.min(20,style.fontSize));}
@@ -136,10 +138,10 @@ public final class ZeroImeService extends InlineImeService {
   buildingBar=true;try{
    if(settings.editorTools())key(strip,toolsExpanded?"‹":"⋯","Editor tools",.8f,()->{toolsExpanded=!toolsExpanded;restoreBar();});
    if(toolsExpanded&&settings.editorTools()){editorToolbar(strip);return;}
-   if(settings.emoji())key(strip,"☺","Emoji panel",1f,()->openPanel(2));
-   if(settings.clipboard())key(strip,"▣","Session clipboard",1f,()->openPanel(1));
+   if(settings.emoji()&&settings.showTool("emoji"))key(strip,"☺","Emoji panel",1f,()->openPanel(2));
+   if(settings.clipboard()&&settings.showTool("clipboard"))key(strip,"▣","Session clipboard",1f,()->openPanel(1));
    TextView mode=new TextView(this);mode.setText(lang==KeyboardLayout.Language.AR?"العربية":"English");mode.setTextColor(style.muted);mode.setGravity(Gravity.CENTER);strip.addView(mode,new LinearLayout.LayoutParams(0,dp(barHeight),2f));
-   voiceKey=key(strip,"🎙","Offline voice typing",1f,()->{if(settings.voice()&&models.installed(settings.model())&&checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)toggleVoice();else openSettings(true);});
+   if(settings.showTool("voice"))voiceKey=key(strip,"🎙","Offline voice typing",1f,()->{if(settings.voice()&&models.installed(settings.model())&&checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)toggleVoice();else openSettings(true);});
    key(strip,"⚙","Keyboard settings",1f,this::openSettings);
   }finally{buildingBar=false;}
  }
@@ -205,15 +207,16 @@ public final class ZeroImeService extends InlineImeService {
   cancelVoice();clearComposition(true);InputConnection c=getCurrentInputConnection();if(c!=null){c.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,code));c.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP,code));}
  }
  private final class SpaceCursor implements View.OnTouchListener{
-  private float origin,last;private boolean dragging;
+  private SpaceGesture gesture;
   public boolean onTouch(View v,MotionEvent e){
    switch(e.getActionMasked()){
-    case MotionEvent.ACTION_DOWN:origin=last=e.getX();dragging=false;return true;
+    case MotionEvent.ACTION_DOWN:
+     SpaceGesture.Mode mode=settings.spaceMode();gesture=new SpaceGesture(mode,dp(mode==SpaceGesture.Mode.LANGUAGE?32:12),dp(14));gesture.begin(e.getX());v.setPressed(true);return true;
     case MotionEvent.ACTION_MOVE:
-     float x=e.getX();if(Math.abs(x-origin)>dp(12))dragging=true;
-     if(dragging){int steps=(int)((x-last)/dp(14));steps=Math.max(-8,Math.min(8,steps));for(int i=0;i<Math.abs(steps);i++)moveCursor(steps<0?KeyEvent.KEYCODE_DPAD_LEFT:KeyEvent.KEYCODE_DPAD_RIGHT);last+=steps*dp(14);}return true;
-    case MotionEvent.ACTION_UP:if(!dragging&&e.getX()>=0&&e.getX()<v.getWidth()&&e.getY()>=0&&e.getY()<v.getHeight())v.performClick();return true;
-    case MotionEvent.ACTION_CANCEL:case MotionEvent.ACTION_POINTER_DOWN:dragging=true;return true;
+     if(gesture!=null){int steps=gesture.move(e.getX());for(int i=0;i<Math.abs(steps);i++)moveCursor(steps<0?KeyEvent.KEYCODE_DPAD_LEFT:KeyEvent.KEYCODE_DPAD_RIGHT);}return true;
+    case MotionEvent.ACTION_UP:
+     v.setPressed(false);if(gesture!=null){SpaceGesture.End end=gesture.end(e.getX(),e.getX()>=0&&e.getX()<v.getWidth()&&e.getY()>=0&&e.getY()<v.getHeight());gesture=null;if(end==SpaceGesture.End.SPACE)v.performClick();else if(end==SpaceGesture.End.SWITCH&&Math.abs(e.getY()-v.getHeight()/2f)<dp(48))switchLanguage();}return true;
+    case MotionEvent.ACTION_CANCEL:case MotionEvent.ACTION_POINTER_DOWN:v.setPressed(false);if(gesture!=null)gesture.cancel();return true;
     default:return true;
    }
   }
@@ -288,7 +291,7 @@ public final class ZeroImeService extends InlineImeService {
   if(shift&&!capsLock&&!symbols){shift=false;render();}else if(strip!=null&&strip.getChildCount()==0)restoreBar();
  }
  private void stopDeleteRepeat(){if(alternatePopup!=null){alternatePopup.dismiss();alternatePopup=null;}deleteTimer.removeCallbacks(deleteRepeat);heldDelete=null;}
- private void repeatDelete(){if(!active||heldDelete==null||!heldDelete.isAttachedToWindow()||!isInputViewShown()){stopDeleteRepeat();return;}delete();deleteTimer.postDelayed(deleteRepeat,75);}
+ private void repeatDelete(){if(!active||heldDelete==null||!heldDelete.isAttachedToWindow()||!isInputViewShown()){stopDeleteRepeat();return;}delete();deleteTimer.postDelayed(deleteRepeat,settings.deleteInterval());}
  private void delete(){
   cancelVoice();clearComposition(true);InputConnection c=getCurrentInputConnection();if(c==null)return;
   if(c.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL)))c.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DEL));else c.deleteSurroundingTextInCodePoints(1,0);

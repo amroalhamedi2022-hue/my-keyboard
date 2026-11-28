@@ -15,7 +15,10 @@ final class ZeroSettings {
  boolean numberRow(){return p.getBoolean("number_row",false);}
  boolean indic(){return p.getBoolean("arabic_indic",false);}
  boolean editorTools(){return p.getBoolean("editor_tools",true);}
- boolean spaceCursor(){return p.getBoolean("space_cursor",true);}
+ boolean spaceCursor(){return spaceMode()==SpaceGesture.Mode.CURSOR;}
+ SpaceGesture.Mode spaceMode(){int n=p.getInt("space_mode",p.getBoolean("space_cursor",true)?0:2);return SpaceGesture.Mode.values()[Math.max(0,Math.min(2,n))];}
+ int deleteInterval(){return Math.max(40,Math.min(160,p.getInt("delete_interval",75)));}
+ boolean showTool(String key){return p.getBoolean("toolbar_"+key,true);}
  boolean inlineAutofill(){return p.getBoolean("inline_autofill",true);}
  boolean stopOnSilence(){return p.getBoolean("voice_endpoint",false);}
  boolean voiceReview(){return p.getBoolean("voice_review",true);}

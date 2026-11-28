@@ -29,3 +29,5 @@ Owner alpha priority: run corrected CI once; inspect failure if any; acquire uns
 Alpha01 signed and saved. Next use same key, package ID and higher versionCode; owner can try signed alpha now. Prioritize IME registration/activation runtime diagnosis and testing signed build on real Android, then actual voice and glide. Avoid rebuilding simply for documentation. See docs/RELEASE_ALPHA01.md.
 
 Alpha02: verify compact layout in both languages on owner tablet, long-press variants, toolbar/candidates, settings navigation and voice entry. Continue actual voice/glide accuracy benchmarks. Sign code 101 only with existing key after build.
+
+Hybrid plan is now priority authority: docs/HYBRID_MASTER_PLAN.md. Continue P0 core input, P1 glide and P2 real voice benchmark in independent tracks; do not claim gates pass until device evidence. First hybrid changes are separate from running Alpha02 build.

@@ -42,9 +42,15 @@ public final class SetupActivity extends Activity {
   toggle(root,"Incognito (disables glide and voice)",settings.incognito(),settings,"incognito");
   toggle(root,"Number row",settings.numberRow(),settings,"number_row");
   toggle(root,"Arabic-Indic numbers",settings.indic(),settings,"arabic_indic");
-  toggle(root,"Spacebar cursor gesture",settings.spaceCursor(),settings,"space_cursor");
+  selector(root,"Spacebar swipe",new String[]{"Move cursor","Switch language","Off"},settings.spaceMode().ordinal(),n->settings.number("space_mode",n));
+  range(root,"Backspace repeat interval (ms)",40,160,settings.deleteInterval(),n->settings.number("delete_interval",n));
   if(android.os.Build.VERSION.SDK_INT>=30)toggle(root,"Show Android Autofill suggestions",settings.inlineAutofill(),settings,"inline_autofill");
   toggle(root,"Editor toolbar",settings.editorTools(),settings,"editor_tools");
+  root=section("Toolbar","Choose quick actions and editor controls");
+  toggle(root,"Show emoji shortcut",settings.showTool("emoji"),settings,"toolbar_emoji");
+  toggle(root,"Show clipboard shortcut",settings.showTool("clipboard"),settings,"toolbar_clipboard");
+  toggle(root,"Show microphone shortcut",settings.showTool("voice"),settings,"toolbar_voice");
+  toggle(root,"Show editing history controls",settings.showTool("history"),settings,"toolbar_history");
   root=section("Dictionaries","Personal words · offline frequency lists");
   toggle(root,"Personal glide dictionary",settings.personalEnabled(),settings,"personal_enabled");
   dictionary(root,settings,false);dictionary(root,settings,true);
