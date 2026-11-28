@@ -10,6 +10,8 @@ stage=upstream/"zero-staged-voice"
 templates=zero/"research/rebase/voice"
 module=upstream/"zero-voice"
 shutil.copytree(stage/"java",module/"src/main/java")
+# The upstream Application defaults to device-protected storage; preserve the old Zero CE model path.
+replace(module/"src/main/java/com/zerokeyboard/ime/voice/ModelStore.java", "context=c.getApplicationContext();", "context=c.createCredentialProtectedStorageContext();")
 shutil.copytree(stage/"cpp",module/"src/main/cpp")
 shutil.copy2(templates/"zero-voice.gradle",module/"build.gradle")
 (module/"src/main/AndroidManifest.xml").write_text('<manifest xmlns:android="http://schemas.android.com/apk/res/android"/>\n')
