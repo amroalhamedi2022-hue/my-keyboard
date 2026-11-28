@@ -26,7 +26,7 @@ def wait(fn, seconds=35):
     while time.monotonic()<end:
         try:
             value=fn()
-            if value:return value
+            if value is not None and value is not False:return value
         except (subprocess.SubprocessError,ValueError,ET.ParseError) as e:last=str(e)
         time.sleep(.3)
     raise AssertionError("condition not observed: "+str(last))
