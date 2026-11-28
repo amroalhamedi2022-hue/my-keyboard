@@ -9,7 +9,7 @@ feature. Previous emulator results apply to their exact source and payload.
 |---|---|---|---|
 | A | English and Arabic taps, delete, language switching | Tested with limitations | Actual Android 13 emulator touch test on earlier mature commit. Retest 105 and rapid taps. |
 | A | Shift, caps, repeat delete, field-aware actions, numeric, email and URL layouts | Implemented but untested | Mature core paths. Exercise editor actions, selection, rotation, composition and rich text. |
-| B | Local microphone permission, immediate editor return, bundled Tiny provisioning, missing Base fallback | Implemented but untested | Candidate 105 adds permission and capture smoke. Permission result requires a second explicit tap. |
+| B | Local microphone permission, return to editor, bundled Tiny provisioning, missing Base fallback | Tested with limitations | Android 13 emulator showed grant and denial dialogs, returned to the editor with its text and reached recording after an explicit second tap. Missing Base fallback and Xiaomi hardware remain open. |
 | B | Capture, offline Whisper, review, pause, discard, continuous segments | Tested with limitations | Production JNI decoded public English on the host and rejected a cancelled session. Tiny WER was 92.0% auto and 84.8% forced Arabic on 16 Palestine clips. Android insertion and better Arabic accuracy remain open. |
 | B | Microphone activity, day/night voice panel, advanced controls | Implemented but untested | Candidate 105 adds a throttled level meter. Capture real screenshots and verify accessibility. |
 | C | Arabic and English suggestions, next-word, optional correction, user dictionary | Implemented but untested | Mature dictionaries and correction defaults. Run word-ranking, correction-off and backup cases. |
@@ -20,7 +20,7 @@ feature. Previous emulator results apply to their exact source and payload.
 | E | Adaptive light/dark and two Zero Glass palettes | Implemented but untested | Candidate 105 adds rounded defaults to existing renderer. Check contrasts, legacy prefs, portrait and landscape screenshots. |
 | E | Key motion, trail, visual consistency across symbols, panels and settings | In development | Capture matching screens on target tablet and phone. No compositor measurement. |
 | F | Settings categories, search and themes | Implemented but untested | Mature settings shipped. Confirm each changed control affects the IME. |
-| F | Adaptive two-pane settings | Implemented but untested | Wide settings pair a persistent category list with the current settings screen and a live typing field on the home screen. The phone keeps single-pane navigation. A tablet-sized emulator check is included. |
+| F | Adaptive two-pane settings | Tested with limitations | Android 13 emulator checks and screenshots confirmed the single-pane phone view, tablet preview, and Appearance details next to the selected category. Xiaomi hardware and landscape remain open. |
 | F | Full bilingual UI | In development | Unmodified upstream resources and added Arabic labels are used where available. Voice settings and the full locale audit remain open. |
 | G | Clipboard text, pinning, history and privacy | Tested with limitations | 0.2.2 includes hardening and passed startup gate. Candidate 105 adds explicit deletion of all saved clips, including pins, and stale-row guards. Runtime retention and editor-switch tests remain open. |
 | G | Editing tools and reorderable toolbar | Implemented but untested | Existing upstream actions and reorder UI. Validate undo/redo, overflow and private behavior. |
@@ -89,3 +89,9 @@ feature. Previous emulator results apply to their exact source and payload.
   opened settings before selecting the IME. The retry opens settings after
   selection and preserves keyboard and microphone evidence even if the settings
   check fails.
+- [Adaptive candidate runtime retry](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46176680046)
+  passed the phone and tablet settings check, bilingual typing, editing and part
+  of the microphone check. It captured the app in the recording state. A
+  screenshot showed that the floating voice controls covered part of the host
+  editor. The Discard check timed out. Voice controls now mount inside the
+  keyboard view and the probe asserts their position before testing Discard.

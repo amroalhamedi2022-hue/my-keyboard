@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
@@ -25,7 +24,7 @@ import helium314.keyboard.latin.settings.Settings;
 public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {
     private VoiceSession voice;
     private View anchor;
-    private PopupWindow panel;
+    private View panel;
     private TextView preview;
     private ProgressBar meter;
     private Button pause, stop, insert;
@@ -123,7 +122,8 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {
         row.addView(b,new LinearLayout.LayoutParams(0,dp(42),1));return b;
     }
     private boolean showPanel(){
-        if(anchor==null||!anchor.isAttachedToWindow()||anchor.getHeight()==0)return false;
+        if (!(anchor instanceof FrameLayout frame) || !frame.isAttachedToWindow()
+                || frame.getHeight() < dp(96) || frame.getWidth() <= dp(16)) return false;
         boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
                 == Configuration.UI_MODE_NIGHT_YES;
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(12),dp(8),dp(12),dp(8));
@@ -132,6 +132,8 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {
         bg.setCornerRadius(dp(18));
         bg.setStroke(dp(1), night ? 0xFF455674 : 0xFFD6E3F7);
         root.setBackground(bg);
+        root.setClickable(true);
+        root.setElevation(dp(6));
         preview=new TextView(this);preview.setTextColor(night ? 0xFFF2F6FF : 0xFF19283D);preview.setTextSize(15);preview.setMaxLines(3);preview.setText("Preparing offline voice…");
         root.addView(preview,new LinearLayout.LayoutParams(-1,0,1));
         meter = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -144,12 +146,14 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {
         pause=control(controls,"Pause",()->voice.togglePause());stop=control(controls,"Stop",()->{if(processing)cancelVoice();else voice.stop();});
         insert=control(controls,"Insert",this::commitPending);control(controls,"Discard",this::cancelVoice);
         pause.setEnabled(false);insert.setEnabled(false);
-        int width=Math.max(dp(240),Math.min(anchor.getWidth(),dp(520))-dp(12));int height=dp(124);
-        PopupWindow created=new PopupWindow(root,width,height,false);created.setTouchable(true);created.setOutsideTouchable(false);
-        created.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);created.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));created.setElevation(dp(6));
-        created.setOnDismissListener(()->{if(panel==created)cancelVoice();});panel=created;
-        try{created.showAsDropDown(anchor,(anchor.getWidth()-width)/2,-anchor.getHeight()-height);return created.isShowing();}
-        catch(RuntimeException e){panel=null;return false;}
+        int width = Math.min(frame.getWidth() - dp(16), dp(520));
+        int height = Math.min(frame.getHeight() - dp(12), dp(124));
+        FrameLayout.LayoutParams layout = new FrameLayout.LayoutParams(
+                width, height, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        layout.bottomMargin = dp(8);
+        frame.addView(root, layout);
+        panel = root;
+        return true;
     }
     private void commitPending(){
         String text=pending;boolean valid=allowed()&&target!=null&&target==getCurrentInputConnection()&&!text.isEmpty();cancelVoice();
@@ -158,7 +162,9 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {
     private void cancelVoice(){
         generation++;pending="";target=null;processing=false;
         if(voice!=null)voice.cancel();
-        PopupWindow old=panel;panel=null;if(old!=null)old.dismiss();
+        View old = panel;
+        panel = null;
+        if (old != null && old.getParent() instanceof FrameLayout parent) parent.removeView(old);
         preview=null;meter=null;pause=null;stop=null;insert=null;
     }
 }

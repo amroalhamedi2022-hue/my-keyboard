@@ -40,8 +40,8 @@ replace(service,"    private boolean allowed(){",'''    // Evaluation-only stati
                     appendEvaluationView(result, -233, pinned == null ? null : pinned.findViewWithTag(tag));
                     appendEvaluationView(result, -233, toolbar == null ? null : toolbar.findViewWithTag(tag));
                 }
-                if (panel != null && panel.isShowing()) {
-                    appendEvaluationView(result, -10001, panel.getContentView().findViewWithTag("zero-eval-discard"));
+                if (panel != null && panel.isShown()) {
+                    appendEvaluationView(result, -10001, panel.findViewWithTag("zero-eval-discard"));
                     if (evaluationRecording) result.put(evaluationPoint(-10002, 0, 0));
                 }
             }

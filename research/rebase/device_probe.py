@@ -129,6 +129,8 @@ def voice_smoke(out, checks):
     assert key(RECORDING) is None
     tap(MICROPHONE)
     wait(lambda: key(RECORDING), seconds=90)
+    discard = wait(lambda: key(DISCARD))
+    assert discard["y"] >= wait(lambda: key(ord("q")))["y"], "voice controls escaped the keyboard"
     snapshot(out, "voice-recording")
     tap(DISCARD)
     wait(lambda: key(DISCARD) is None)
@@ -219,5 +221,7 @@ def main():
         except Exception:pass
         try:(a.out/"window.xml").write_bytes(adb("shell","cat","/data/local/tmp/zero-mature.xml"))
         except Exception:pass
+        try:(a.out/"keyboard-geometry.json").write_text(json.dumps(geometry()), encoding="utf-8")
+        except (OSError, ValueError, subprocess.SubprocessError):pass
         (a.out/"report.json").write_text(json.dumps(result,ensure_ascii=False,indent=2))
 if __name__=="__main__":main()
