@@ -48,12 +48,12 @@ def geometry():
     return json.loads(adb("shell","run-as",PACKAGE,"cat","files/zero-eval-geometry.json"))
 
 def key(code):
-    return next((v for v in geometry() if v["code"]==code),None)
+    return next((v for v in geometry() if v["code"]==code or (97<=code<=122 and v["code"]==code-32)),None)
 
 def tap(code):
     k=wait(lambda:key(code))
     adb("shell","input","tap",str(k["x"]),str(k["y"]))
-    time.sleep(.18)
+    time.sleep(.35)
 
 def check_text(name,expected):
     wait(lambda:(lambda n:n is not None and n.get("text")==expected)(field(name)))
@@ -81,6 +81,7 @@ def main():
         adb("shell","settings","put","secure","show_ime_with_hard_keyboard","1")
         adb("shell","am","start","-W","-n",FIXTURE)
         focus("zero_probe_normal")
+        snapshot(a.out,"normal-initial")
         language(False);snapshot(a.out,"english")
         for c in "qwe":tap(ord(c))
         # Some editors start with auto-capitalization. Explicitly distinguish it from missing input.

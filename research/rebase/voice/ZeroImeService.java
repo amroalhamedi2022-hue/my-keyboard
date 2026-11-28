@@ -66,7 +66,7 @@ public final class ZeroImeService extends helium314.keyboard.latin.LatinIME {
         startActivity(i);
     }
     private void toggleVoice(){
-        if(!allowed())return;
+        if(!allowed()){Toast.makeText(this,"Voice is disabled in private or incognito fields",Toast.LENGTH_SHORT).show();return;}
         if(voice.busy()){if(processing)cancelVoice();else voice.stop();return;}
         if(panel!=null){cancelVoice();return;}
         SharedPreferences p=prefs();
