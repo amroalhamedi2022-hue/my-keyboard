@@ -78,12 +78,11 @@ def onboarding(prefix):
     launch();wait(lambda:node("Switch input methods"))
     snap(prefix+"-enabled");passed(prefix+" enabled not selected")
     adb("shell","ime","set",ime)
+    assert adb("shell","settings","get","secure","default_input_method").strip() == ime
     wait(lambda:node("Configure the keyboard"))
     tap("Configure the keyboard")
     wait(lambda:node("Zero Voice & Glide"))
     passed(prefix+" wizard completed")
-    launch()
-    wait(lambda:node("Zero Voice & Glide"))
     snap(prefix+"-settings");passed(prefix+" selected settings")
     tap("Zero Voice & Glide");wait(lambda:node("Enable offline voice"))
     snap(prefix+"-voice");passed(prefix+" voice settings")

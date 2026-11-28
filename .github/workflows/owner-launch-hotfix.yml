@@ -7,7 +7,7 @@ permissions:
   actions: read
 jobs:
   release:
-    if: github.event.label.name == 'zero-launch-hotfix' && github.event.pull_request.head.repo.full_name == github.repository
+    if: (github.event.label.name == 'zero-launch-hotfix' || github.event.label.name == 'zero-launch-hotfix-retest') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -16,6 +16,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/checkout@v4
+        if: github.event.label.name == 'zero-launch-hotfix'
         with:
           repository: HeliBorg/HeliBoard
           ref: f8ec91a982835911cc224fa99434c3396d4cd562
@@ -26,6 +27,7 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+        if: github.event.label.name == 'zero-launch-hotfix'
       - name: Install pinned Android packages
         shell: bash
         run: |
@@ -36,8 +38,13 @@ jobs:
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "$SDK/platform-tools" >> "$GITHUB_PATH"
           "$MANAGER" --sdk_root="$SDK" --licenses < <(yes) >/dev/null
-          "$MANAGER" --sdk_root="$SDK" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.0.13004108' 'cmake;3.22.1'
+          if [ "${{ github.event.label.name }}" = "zero-launch-hotfix-retest" ]; then
+            "$MANAGER" --sdk_root="$SDK" 'build-tools;35.0.0'
+          else
+            "$MANAGER" --sdk_root="$SDK" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.0.13004108' 'cmake;3.22.1'
+          fi
       - name: Prepare exact released core with launcher fix
+        if: github.event.label.name == 'zero-launch-hotfix'
         run: |
           python3 research/rebase/prepare_candidate.py upstream/heliboard .
           python3 research/rebase/attach_voice.py upstream/heliboard .
@@ -45,6 +52,7 @@ jobs:
           python3 research/rebase/check_prepared.py upstream/heliboard
           git -C upstream/heliboard diff --check
       - name: Assemble unsigned non-debug release and source
+        if: github.event.label.name == 'zero-launch-hotfix'
         run: |
           # Non-minified release for initial migration, NOT a debug APK. Avoid JNI shrinker issues.
           python3 - <<'PY'
@@ -77,11 +85,26 @@ jobs:
           # Provide complete corresponding modified source and build scripts for the GPL derivative.
           tar -czf owner-release/zero-mature-corresponding-source.tar.gz --exclude=.git --exclude=.gradle --exclude=.cxx --exclude=build --exclude=local.properties --exclude=zero-staged-voice -C upstream/heliboard .
       - name: Retain unsigned candidate for independent QA retries
+        if: github.event.label.name == 'zero-launch-hotfix'
         uses: actions/upload-artifact@v4
         with:
           name: zero-0.2.1-unsigned-test-input
           path: owner-release/
           if-no-files-found: error
+      - name: Reuse identical 0.2.1 release candidate
+        if: github.event.label.name == 'zero-launch-hotfix-retest'
+        uses: actions/download-artifact@v4
+        with:
+          name: zero-0.2.1-unsigned-test-input
+          run-id: 46142987551
+          github-token: ${{ github.token }}
+          path: owner-release
+      - name: Verify cached candidate provenance and digest
+        if: github.event.label.name == 'zero-launch-hotfix-retest'
+        working-directory: owner-release
+        run: |
+          test "$(cat source-commit.txt)" = d304105e96eaa2fd079a8b2a5e94273c73891ea1
+          sha256sum -c checksums.sha256
       - name: Retrieve previous unsigned owner release
         uses: actions/download-artifact@v4
         with:
