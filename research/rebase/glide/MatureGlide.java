@@ -95,7 +95,7 @@ public final class MatureGlide implements AutoCloseable {
    try{
     List<String> personal;try{personal=PersonalLexicon.parse(personalText,arabic);}catch(IllegalArgumentException e){personal=Collections.emptyList();}
     List<String> words=FrequencyLexicon.merge(SeedLexicon.words(arabic),personal,dictionaries.words(arabic,imported));
-    List<GeometricRanker.Candidate> candidates=ranker.rank(points,centers,words,3);
+    List<GeometricRanker.Candidate> candidates=ranker.rank(points,centers,words,3,()->token!=generation);
     if(candidates.isEmpty()||candidates.get(0).score>2.0)return;
     String result=candidates.get(0).word+(space?" ":"");
     main.post(()->{if(!closed&&token==generation&&host.allowed()&&target==host.target())host.commit(target,result);});

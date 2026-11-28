@@ -48,3 +48,28 @@ These are the verified digests for the tested assets in the publisher's
 A separate four-thread Base run with Arabic forced on the same clips scored
 77.2% WER (193/250) and 36.1% CER (428/1184). This pilot gave no word-error
 benefit from forcing Arabic. It gives no guidance on mixed-language decoding.
+
+### Bundled Tiny follow-up
+
+Ran the exact bundled multilingual Tiny Q5_1 weights on the same 16 published
+Palestine test rows with the pinned Whisper CLI and four host CPU threads.
+The reference totals matched the prior pilot. Timings are for this follow-up
+host, so compare recognition errors with the prior table and use each run's
+latencies as a separate observation.
+
+| Tiny language mode | Strict WER | Strict CER | Cold p50 | Cold p95 | Aggregate RTF |
+|---|---:|---:|---:|---:|---:|
+| Automatic | 92.0% (230/250) | 53.2% (630/1184) | 1.58 s | 3.59 s | 0.31 |
+| Forced Arabic | 84.8% (212/250) | 39.6% (469/1184) | 1.02 s | 3.24 s | 0.21 |
+
+Forcing Arabic reduced word errors by 7.2 percentage points for Tiny on this
+sample. Both modes fall short for Palestinian dictation. Keep model selection
+explicit until a more accurate candidate passes the same corpus and mobile
+resource gates.
+
+The production JNI bridge, compiled separately for the x86_64 host, decoded
+Whisper.cpp's public 11-second English sample in 1.294 seconds. It contained the
+expected English phrase and rejected a second decode after session cancellation.
+Reproduce with `research/asr/NativeInferenceSmoke.java`, host-built
+`libzero_whisper.so`, the pinned Tiny model and `samples/jfk.wav`.
+This test excludes Android microphone capture and editor insertion.

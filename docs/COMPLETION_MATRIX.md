@@ -10,12 +10,12 @@ feature. Previous emulator results apply to their exact source and payload.
 | A | English and Arabic taps, delete, language switching | Tested with limitations | Actual Android 13 emulator touch test on earlier mature commit. Retest 105 and rapid taps. |
 | A | Shift, caps, repeat delete, field-aware actions, numeric, email and URL layouts | Implemented but untested | Mature core paths. Exercise editor actions, selection, rotation, composition and rich text. |
 | B | Local microphone permission, immediate editor return, bundled Tiny provisioning, missing Base fallback | Implemented but untested | Candidate 105 adds permission and capture smoke. Permission result requires a second explicit tap. |
-| B | Capture, offline Whisper, review, pause, discard, continuous segments | Tested with limitations | Existing host inference and recovery tests. Actual Android audio-to-editor accuracy and lifecycle remain open. |
+| B | Capture, offline Whisper, review, pause, discard, continuous segments | Tested with limitations | Production JNI decoded public English on the host and rejected a cancelled session. Tiny WER was 92.0% auto and 84.8% forced Arabic on 16 Palestine clips. Android insertion and better Arabic accuracy remain open. |
 | B | Microphone activity, day/night voice panel, advanced controls | Implemented but untested | Candidate 105 adds a throttled level meter. Capture real screenshots and verify accessibility. |
 | C | Arabic and English suggestions, next-word, optional correction, user dictionary | Implemented but untested | Mature dictionaries and correction defaults. Run word-ranking, correction-off and backup cases. |
 | C | Palestinian and other informal dialect ranking, phrase and mixed-language evaluation | In development | Earlier host ASR and lexicon work. Collect consented typing samples and score actual candidate acceptances. |
 | C | Personal learning and dictionary management | Implemented but untested | Defaults opt out. Candidate 105 hardens private fields. Verify manual deletion, imports and upgrades. |
-| D | Open Arabic/English glide | Tested with limitations | Host admission checks and English trace research. Runtime traces, Arabic accuracy and alternatives remain open. Default remains off. |
+| D | Open Arabic/English glide | Tested with limitations | Host admission, cancellation and top-K equivalence checks plus English trace research. Runtime traces, Arabic accuracy and alternatives remain open. Default remains off. |
 | D | Spacebar cursor movement and swipe-to-delete | Implemented but untested | Mature settings and paths. Test conflicts with glide, tap and multi-touch. |
 | E | Adaptive light/dark and two Zero Glass palettes | Implemented but untested | Candidate 105 adds rounded defaults to existing renderer. Check contrasts, legacy prefs, portrait and landscape screenshots. |
 | E | Key motion, trail, visual consistency across symbols, panels and settings | In development | Capture matching screens on target tablet and phone. No compositor measurement. |
@@ -68,3 +68,11 @@ feature. Previous emulator results apply to their exact source and payload.
   input. It exercises AudioRecord, local native decoding and editor insertion.
   The input is Whisper.cpp's pinned public English sample. This test remains
   pending and is separate from Palestinian Arabic and mixed-language accuracy.
+- [First Android 13 candidate run](https://github.com/amroalhamedi2022-hue/my-keyboard/actions/runs/46150003100)
+  compiled and passed real English, backspace and mixed Arabic/English touches.
+  The screenshot shows a microphone icon. UiAutomator returned the fixture
+  window alone, so the probe timed out locating the mic. Debug-only geometry
+  now reads actual microphone and panel control centers and exports recording
+  state without capturing editor text or audio. The permission and insertion
+  results still require the new run.
+- [Tiny voice and native regression results](../ASR_BENCHMARK.md)

@@ -2,6 +2,7 @@ import com.zerokeyboard.ime.glide.GeometricRanker;
 import com.zerokeyboard.ime.glide.GeometricRanker.Point;
 import com.zerokeyboard.ime.glide.GeometricRanker.Candidate;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 public class RankerEquivalence {
  public static void main(String[] args){
   Random rng=new Random(20261128);GeometricRanker ranker=new GeometricRanker();int checked=0;
@@ -18,5 +19,20 @@ public class RankerEquivalence {
    }
   }
   System.out.println("PASS: "+checked+" deterministic top-K versus full-ranking cases (synthetic traces)");
+  cancellationPreservesCache();
+ }
+ private static void cancellationPreservesCache(){
+  GeometricRanker ranker=new GeometricRanker();
+  Point a=new Point(0,0),b=new Point(1,0),c=new Point(2,0);
+  Map<Integer,Point> keys=Map.of((int)'a',a,(int)'b',b,(int)'c',c);
+  List<Point> trace=List.of(a,b,c);
+  List<String> words=List.of("abc","acb","bac","cab");
+  AtomicInteger checks=new AtomicInteger();
+  assert ranker.rank(trace,keys,words,1,()->checks.incrementAndGet()>=3).isEmpty();
+  assert ranker.rank(trace,keys,words,1).get(0).word.equals("abc");
+  checks.set(0);
+  assert ranker.rank(trace,keys,words,1,()->checks.incrementAndGet()>=3).isEmpty();
+  assert ranker.rank(trace,keys,words,1).get(0).word.equals("abc");
+  System.out.println("PASS: cancellation during index preparation and ranking preserves the next result");
  }
 }

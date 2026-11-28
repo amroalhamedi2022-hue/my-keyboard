@@ -12,6 +12,9 @@ import re
 PACKAGE="com.zerokeyboard.ime.debug"
 IME=PACKAGE+"/com.zerokeyboard.ime.ZeroImeService"
 FIXTURE="com.zerokeyboard.ime/.ImeProbeActivity"
+MICROPHONE = -233
+DISCARD = -10001
+RECORDING = -10002
 
 def adb(*args):
     return subprocess.run(["adb","-s","emulator-5554",*args],check=True,capture_output=True,timeout=45).stdout
@@ -81,38 +84,34 @@ def touch_node(node):
     left, top, right, bottom = coords
     adb("shell", "input", "tap", str((left + right) // 2), str((top + bottom) // 2))
 
-def microphone():
-    return find_node(lambda n: n.get("content-desc") == "Voice input")
-
 def permission_button(name):
     return find_node(lambda n: n.get("resource-id", "").endswith(":id/" + name))
 
 def voice_smoke(out, checks):
-    touch_node(wait(microphone))
+    tap(MICROPHONE)
     deny = wait(lambda: permission_button("permission_deny_button"))
     snapshot(out, "voice-permission")
     touch_node(deny)
-    wait(microphone)
     check_text("zero_probe_normal", "qwضa")
     checks.append("microphone requests system permission and denial returns to the editor")
 
-    touch_node(wait(microphone))
+    tap(MICROPHONE)
     touch_node(wait(lambda: permission_button("permission_allow_foreground_only_button")))
-    wait(microphone)
-    assert find_node(lambda n: n.get("text", "").startswith("Recording")) is None
-    touch_node(wait(microphone))
-    wait(lambda: find_node(lambda n: n.get("text", "").startswith("Recording")), seconds=90)
+    check_text("zero_probe_normal", "qwضa")
+    assert key(RECORDING) is None
+    tap(MICROPHONE)
+    wait(lambda: key(RECORDING), seconds=90)
     snapshot(out, "voice-recording")
-    touch_node(wait(lambda: find_node(lambda n: n.get("text") == "Discard")))
-    wait(microphone)
+    tap(DISCARD)
+    wait(lambda: key(DISCARD) is None)
     check_text("zero_probe_normal", "qwضa")
     checks.append("bundled model prepares, microphone capture starts on explicit tap and Discard preserves text")
 
 def transcription_smoke(out, checks, wav_path, port):
     from emulator_audio import replay_wav
 
-    touch_node(wait(microphone))
-    wait(lambda: find_node(lambda n: n.get("text", "").startswith("Recording")), seconds=90)
+    tap(MICROPHONE)
+    wait(lambda: key(RECORDING), seconds=90)
     started = time.monotonic()
     replay_wav(wav_path, port)
     expected = "what your country can do for you"
@@ -168,7 +167,7 @@ def main():
         if a.english_wav:
             transcription_smoke(a.out, result["checks"], a.english_wav, a.emulator_grpc_port)
         focus("zero_probe_password");snapshot(a.out,"password")
-        assert microphone() is None
+        wait(lambda: key(MICROPHONE) is None)
         result["checks"].append("voice toolbar action hidden in password field")
     except Exception as e:
         result["error"]=str(e)
