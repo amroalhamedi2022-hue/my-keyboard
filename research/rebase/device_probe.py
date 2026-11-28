@@ -13,8 +13,8 @@ PACKAGE="com.zerokeyboard.ime.debug"
 IME=PACKAGE+"/com.zerokeyboard.ime.ZeroImeService"
 FIXTURE="com.zerokeyboard.ime/.ImeProbeActivity"
 MICROPHONE = -233
-DISCARD = -10001
-RECORDING = -10002
+DISCARD = "discard"
+RECORDING = "recording"
 SETTINGS = PACKAGE + "/helium314.keyboard.settings.SettingsActivity"
 
 def adb(*args):
@@ -51,8 +51,24 @@ def focus(name):
 def geometry():
     return json.loads(adb("shell","run-as",PACKAGE,"cat","files/zero-eval-geometry.json"))
 
+def voice_control(points, name):
+    explicit = next((point for point in points if point.get("control") == name), None)
+    if explicit is not None:
+        return explicit
+    # The pinned compiled candidate appends controls after all actual keyboard keys.
+    if name == RECORDING:
+        return next((point for point in points if point.get("code") == -10002
+                     and (point["x"], point["y"]) == (0, 0)), None)
+    if name == DISCARD:
+        matches = [point for point in points if point.get("code") == -10001]
+        return matches[-1] if len(matches) > 1 else None
+    return None
+
 def key(code):
-    return next((v for v in geometry() if v["code"]==code or (97<=code<=122 and v["code"]==code-32)),None)
+    points = geometry()
+    if isinstance(code, str):
+        return voice_control(points, code)
+    return next((v for v in points if v.get("code")==code or (97<=code<=122 and v.get("code")==code-32)),None)
 
 def tap(code):
     k=wait(lambda:key(code))
@@ -69,7 +85,7 @@ def language(ar):
     def found():return key(expected) or key(alternative)
     wait(found)
     if not key(expected):
-        if not key(-227):raise AssertionError("required language switch key missing; codes="+str([v["code"] for v in geometry()]))
+        if not key(-227):raise AssertionError("required language switch key missing; codes="+str([v.get("code") for v in geometry()]))
         tap(-227)
     wait(lambda:key(expected))
 

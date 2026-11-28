@@ -106,15 +106,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: zero-mature-core-evaluation-not-release
-          run-id: 46175857274
+          run-id: 46177344819
           github-token: ${{ github.token }}
           path: retry-input
       - name: Verify and stage runtime retry input
         if: github.event.label.name == 'zero-mature-runtime-retry'
         run: |
-          test "$(cat retry-input/zero-source-commit.txt)" = c6eef9a0fd500f87c2e3df5fc10c72c68b0c95cd
+          test "$(cat retry-input/zero-source-commit.txt)" = 4a8fafd482621f46e66588e1a00595de36cca4a1
           apk=retry-input/zero-mature-core-debug-evaluation.apk
-          echo "8b8871fb274371b41ac24b0b8c24ca717328f1e5b74e086aa1b928279d7b8740  $apk" | sha256sum -c -
+          echo "87abdf59a292ebc8b5adfe28154b192fc15737cd1a3bd7db357cdb1a0a2ef51e  $apk" | sha256sum -c -
           echo "ZERO_CANDIDATE_APK=$apk" >> "$GITHUB_ENV"
           mkdir -p candidate-results
           cp retry-input/{apk.sha256,badging.txt,permissions.txt,zero-source-commit.txt} candidate-results/

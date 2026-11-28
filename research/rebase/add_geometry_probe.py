@@ -41,8 +41,16 @@ replace(service,"    private boolean allowed(){",'''    // Evaluation-only stati
                     appendEvaluationView(result, -233, toolbar == null ? null : toolbar.findViewWithTag(tag));
                 }
                 if (panel != null && panel.isShown()) {
-                    appendEvaluationView(result, -10001, panel.findViewWithTag("zero-eval-discard"));
-                    if (evaluationRecording) result.put(evaluationPoint(-10002, 0, 0));
+                    View discard = panel.findViewWithTag("zero-eval-discard");
+                    if (discard != null && discard.getWidth() > 0 && discard.getHeight() > 0) {
+                        int[] point = new int[2];
+                        discard.getLocationOnScreen(point);
+                        result.put(new org.json.JSONObject().put("control", "discard")
+                            .put("x", point[0] + discard.getWidth()/2).put("y", point[1] + discard.getHeight()/2));
+                    }
+                    if (evaluationRecording) {
+                        result.put(new org.json.JSONObject().put("control", "recording"));
+                    }
                 }
             }
             java.io.File file=new java.io.File(getApplicationContext().getFilesDir(),"zero-eval-geometry.json");
